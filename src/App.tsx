@@ -4,12 +4,14 @@ import { GoogleHeader } from './components/GoogleHeader';
 import { StatusBoardView } from './components/StatusBoardView';
 import { SubjectListsView } from './components/SubjectListsView';
 import { CalendarView } from './components/CalendarView';
+import { NotesView } from './components/NotesView';
 import { TaskEditDrawer } from './components/TaskEditDrawer';
+import { DuplicateTaskModal } from './components/DuplicateTaskModal';
 import { SyncModal } from './components/SyncModal';
 import { CheckCircle2 } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
-  const { viewMode, hotkeyNotification } = useKanban();
+  const { viewMode, hotkeyNotification, toastMessage } = useKanban();
 
   return (
     <div className="min-h-screen bg-[#f8fafd] dark:bg-[#131314] text-[#1f1f1f] dark:text-[#e3e3e3] flex flex-col font-sans transition-colors duration-150">
@@ -19,13 +21,25 @@ const MainLayout: React.FC = () => {
         {viewMode === 'status_board' && <StatusBoardView />}
         {viewMode === 'subject_lists' && <SubjectListsView />}
         {viewMode === 'calendar' && <CalendarView />}
+        {viewMode === 'notes' && <NotesView />}
       </main>
 
       {/* Google Tasks style Slide-in Drawer */}
       <TaskEditDrawer />
 
+      {/* Duplicate Task to Lessons Modal */}
+      <DuplicateTaskModal />
+
       {/* Private GitHub Gist Sync Modal */}
       <SyncModal />
+
+      {/* Action Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-[#1f1f1f] dark:bg-[#e3e3e3] text-white dark:text-[#131314] shadow-xl text-xs font-medium animate-in fade-in slide-in-from-bottom duration-200">
+          <CheckCircle2 size={14} className="text-[#81c995] dark:text-[#137333]" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
       {/* Global Hotkey In-App Toast Notification */}
       {hotkeyNotification && (

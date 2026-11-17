@@ -6,6 +6,7 @@ import {
   Columns3,
   ListFilter,
   CalendarDays,
+  StickyNote,
   X,
   Sun,
   Moon,
@@ -91,6 +92,18 @@ export const GoogleHeader: React.FC = () => {
             <CalendarDays size={13} />
             <span>Calendar</span>
           </button>
+
+          <button
+            onClick={() => setViewMode('notes')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              viewMode === 'notes'
+                ? 'bg-white dark:bg-[#282a2c] text-[#0b57d0] dark:text-[#8ab4f8] shadow-sm'
+                : 'text-[#5f6368] dark:text-[#8e918f] hover:text-[#1f1f1f] dark:hover:text-[#e3e3e3]'
+            }`}
+          >
+            <StickyNote size={13} />
+            <span>Notes</span>
+          </button>
         </div>
 
         {/* Right Search, Theme Toggle, Hotkey pill, Reset */}
@@ -102,7 +115,7 @@ export const GoogleHeader: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search tasks..."
+              placeholder={viewMode === 'notes' ? 'Search notes...' : 'Search tasks...'}
               className="w-full bg-[#f0f4f9] dark:bg-[#1e1f20] border border-[#e0e2ec] dark:border-[#282a2c] rounded-xl pl-8 pr-7 py-1.5 text-xs text-[#1f1f1f] dark:text-[#e3e3e3] placeholder-[#5f6368] dark:placeholder-[#8e918f] focus:outline-none focus:border-[#0b57d0] dark:focus:border-[#8ab4f8]"
             />
             {searchQuery && (
@@ -161,8 +174,9 @@ export const GoogleHeader: React.FC = () => {
         </div>
       </div>
 
-      {/* 7 Lessons Filter Chips Bar */}
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-2 flex items-center justify-between gap-3 overflow-x-auto custom-scrollbar border-t border-[#f0f4f9] dark:border-[#1e1f20]">
+      {/* 7 Lessons Filter Chips Bar (hidden in Notes view) */}
+      {viewMode !== 'notes' && (
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-2 flex items-center justify-between gap-3 overflow-x-auto custom-scrollbar border-t border-[#f0f4f9] dark:border-[#1e1f20]">
         <div className="flex items-center gap-1.5 shrink-0">
           <span className="text-[11px] text-[#5f6368] dark:text-[#5f6368] font-medium mr-1 uppercase tracking-wider hidden sm:inline">
             Filter:
@@ -214,7 +228,8 @@ export const GoogleHeader: React.FC = () => {
         <div className="text-[11px] text-[#5f6368] dark:text-[#8e918f] font-mono shrink-0 hidden md:block">
           {totalActive} pending · {totalCompleted} completed
         </div>
-      </div>
+        </div>
+      )}
     </header>
   );
 };

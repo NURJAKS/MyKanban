@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { HomeworkTask } from '../types';
 import { useKanban } from '../context/KanbanContext';
-import { Check, GripVertical, ListTodo, ChevronRight } from 'lucide-react';
+import { Check, GripVertical, ListTodo, ChevronRight, Copy } from 'lucide-react';
 
 interface GoogleTaskItemProps {
   task: HomeworkTask;
@@ -14,6 +14,7 @@ export const GoogleTaskItem: React.FC<GoogleTaskItemProps> = memo(({ task }) => 
     getSubjectColor,
     toggleTaskComplete,
     setEditingTaskId,
+    setDuplicatingTaskId,
     setDraggedTaskId,
     draggedTaskId,
   } = useKanban();
@@ -128,9 +129,22 @@ export const GoogleTaskItem: React.FC<GoogleTaskItemProps> = memo(({ task }) => 
         </div>
       </div>
 
-      {/* Edit arrow indicator on hover */}
-      <div className="opacity-0 group-hover:opacity-60 transition-opacity mt-1 text-[#747775] dark:text-[#8e918f] shrink-0">
-        <ChevronRight size={16} />
+      {/* Duplicate & Edit actions on hover */}
+      <div className="flex items-center gap-0.5 shrink-0 mt-0.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setDuplicatingTaskId(task.id);
+          }}
+          className="opacity-50 sm:opacity-0 sm:group-hover:opacity-80 hover:!opacity-100 p-1 rounded-lg text-[#5f6368] dark:text-[#8e918f] hover:text-[#0b57d0] dark:hover:text-[#8ab4f8] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-all"
+          title="Duplicate to lessons"
+        >
+          <Copy size={13} />
+        </button>
+        <div className="opacity-0 group-hover:opacity-60 transition-opacity text-[#747775] dark:text-[#8e918f]">
+          <ChevronRight size={16} />
+        </div>
       </div>
     </div>
   );

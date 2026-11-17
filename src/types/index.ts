@@ -34,4 +34,12 @@ export interface HomeworkTask {
   createdAt: string;
 }
 
-export type ViewMode = 'status_board' | 'subject_lists' | 'calendar';
+export type ViewMode = 'status_board' | 'subject_lists' | 'calendar' | 'notes';
+
+export interface UniversityNote {
+  id: string;
+  title: string;
+  content: string;
+  pinned?: boolean;
+  updatedAt: string;
+}

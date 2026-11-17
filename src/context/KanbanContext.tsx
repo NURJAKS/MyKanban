@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { Subject, HomeworkTask, TaskStatus, ViewMode, Theme, DayOfWeek } from '../types';
-import { INITIAL_SUBJECTS, INITIAL_TASKS } from '../data/initialData';
+import { Subject, HomeworkTask, TaskStatus, ViewMode, Theme, DayOfWeek, UniversityNote } from '../types';
+import { INITIAL_SUBJECTS, INITIAL_TASKS, INITIAL_NOTES } from '../data/initialData';
 import {
   SyncConfig,
   createSecretGist,
@@ -31,13 +31,16 @@ const migrateTask = (raw: HomeworkTask & { dueDate?: string; dueTime?: string })
 interface KanbanContextType {
   subjects: Subject[];
   tasks: HomeworkTask[];
+  notes: UniversityNote[];
   viewMode: ViewMode;
   theme: Theme;
   selectedSubjectId: string | null;
   searchQuery: string;
   editingTaskId: string | null;
+  duplicatingTaskId: string | null;
   draggedTaskId: string | null;
   hotkeyNotification: boolean;
+  toastMessage: string | null;
 
   // Sync state & actions
   syncConfig: SyncConfig | null;
@@ -56,9 +59,16 @@ interface KanbanContextType {
   setSelectedSubjectId: (id: string | null) => void;
   setSearchQuery: (q: string) => void;
   setEditingTaskId: (id: string | null) => void;
+  setDuplicatingTaskId: (id: string | null) => void;
   setDraggedTaskId: (id: string | null) => void;
+  showToast: (msg: string) => void;
 
   addTask: (data: { title: string; subjectId: string; dayOfWeek?: DayOfWeek | null; details?: string; status?: TaskStatus }) => void;
+  duplicateTaskToSubjects: (
+    taskId: string,
+    targetSubjectIds: string[],
+    options?: { resetStatus?: boolean; dayOfWeek?: DayOfWeek | null }
+  ) => number;
   toggleTaskComplete: (taskId: string) => void;
   updateTask: (taskId: string, partial: Partial<HomeworkTask>) => void;
   deleteTask: (taskId: string) => void;
@@ -69,6 +79,9 @@ interface KanbanContextType {
   addSubtask: (taskId: string, title: string) => void;
   deleteSubtask: (taskId: string, subtaskId: string) => void;
   updateSubject: (subjectId: string, partial: Partial<Subject>) => void;
+  addNote: (title?: string) => string;
+  updateNote: (noteId: string, partial: Partial<Pick<UniversityNote, 'title' | 'content' | 'pinned'>>) => void;
+  deleteNote: (noteId: string) => void;
   resetDefaults: () => void;
 
   getSubjectById: (id: string) => Subject | undefined;
@@ -80,6 +93,7 @@ const KanbanContext = createContext<KanbanContextType | undefined>(undefined);
 
 const STORAGE_KEY_TASKS = 'gtasks_uni_tasks_v4';
 const STORAGE_KEY_SUBJECTS = 'gtasks_uni_subjects_v4';
+const STORAGE_KEY_NOTES = 'gtasks_uni_notes_v1';
 const STORAGE_KEY_THEME = 'gtasks_uni_theme_v3';
 const STORAGE_KEY_SYNC = 'gtasks_uni_sync_v1';
 const STORAGE_KEY_UPDATED = 'gtasks_uni_updated_v4';
@@ -117,6 +131,19 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   });
 
+  const [notes, setNotes] = useState<UniversityNote[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_NOTES);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_NOTES;
+      }
+      return INITIAL_NOTES;
+    } catch {
+      return INITIAL_NOTES;
+    }
+  });
+
   const [syncConfig, setSyncConfig] = useState<SyncConfig | null>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SYNC);
@@ -134,8 +161,11 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [duplicatingTaskId, setDuplicatingTaskId] = useState<string | null>(null);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [hotkeyNotification, setHotkeyNotification] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
 
   // Refs for sync coordination without stale closures
   const hasMountedRef = useRef(false);
@@ -156,9 +186,11 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Latest state refs for async sync callbacks
   const subjectsRef = useRef(subjects);
   const tasksRef = useRef(tasks);
+  const notesRef = useRef(notes);
   const syncConfigRef = useRef(syncConfig);
   subjectsRef.current = subjects;
   tasksRef.current = tasks;
+  notesRef.current = notes;
   syncConfigRef.current = syncConfig;
 
   // Sync theme with document class
@@ -234,6 +266,9 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         } catch {}
         setSubjects(remote.subjects);
         setTasks(remote.tasks.map(migrateTask));
+        if (Array.isArray(remote.notes) && remote.notes.length > 0) {
+          setNotes(remote.notes);
+        }
       }
 
       const nowIso = new Date().toISOString();
@@ -268,6 +303,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         updatedAt: nowIso,
         subjects: subjectsRef.current,
         tasks: tasksRef.current,
+        notes: notesRef.current,
       });
 
       setSyncConfig((prev) =>
@@ -292,6 +328,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         updatedAt: nowIso,
         subjects: subjectsRef.current,
         tasks: tasksRef.current,
+        notes: notesRef.current,
       });
 
       localUpdatedAtRef.current = nowIso;
@@ -333,6 +370,9 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       setSubjects(remote.subjects);
       setTasks(remote.tasks.map(migrateTask));
+      if (Array.isArray(remote.notes) && remote.notes.length > 0) {
+        setNotes(remote.notes);
+      }
       setSyncConfig({
         token: token.trim(),
         gistId: cleanId,
@@ -393,11 +433,12 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, [syncPull]);
 
-  // Save subjects & tasks to localStorage + debounced auto-push to Gist
+  // Save subjects, tasks & notes to localStorage + debounced auto-push to Gist
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_SUBJECTS, JSON.stringify(subjects));
       localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
+      localStorage.setItem(STORAGE_KEY_NOTES, JSON.stringify(notes));
     } catch {}
 
     if (!hasMountedRef.current) {
@@ -425,7 +466,17 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         syncPush();
       }, 1200);
     }
-  }, [subjects, tasks, syncPush]);
+  }, [subjects, tasks, notes, syncPush]);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToastMessage(null);
+    }, 2800);
+  }, []);
 
   const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
@@ -468,6 +519,43 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [subjects]
   );
 
+  const duplicateTaskToSubjects = useCallback(
+    (
+      taskId: string,
+      targetSubjectIds: string[],
+      options?: { resetStatus?: boolean; dayOfWeek?: DayOfWeek | null }
+    ): number => {
+      const source = tasksRef.current.find((t) => t.id === taskId);
+      if (!source || targetSubjectIds.length === 0) return 0;
+
+      const today = new Date().toISOString().split('T')[0];
+      const baseTs = Date.now();
+      const resetStatus = Boolean(options?.resetStatus);
+      const nextDay = options?.dayOfWeek !== undefined ? options.dayOfWeek : source.dayOfWeek;
+
+      const clones: HomeworkTask[] = targetSubjectIds.map((subjId, idx) => ({
+        id: `task-${baseTs}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+        subjectId: subjId,
+        title: source.title,
+        details: source.details,
+        status: resetStatus ? 'todo' : source.status,
+        completed: resetStatus ? false : source.completed,
+        completedAt: resetStatus ? undefined : source.completedAt,
+        dayOfWeek: nextDay,
+        createdAt: today,
+        subtasks: source.subtasks.map((st, stIdx) => ({
+          id: `st-${baseTs}-${idx}-${stIdx}-${Math.random().toString(36).substring(2, 5)}`,
+          title: st.title,
+          completed: resetStatus ? false : st.completed,
+        })),
+      }));
+
+      setTasks((prev) => [...clones, ...prev]);
+      return clones.length;
+    },
+    []
+  );
+
   const toggleTaskComplete = useCallback((taskId: string) => {
     setTasks((prev) =>
       prev.map((t) => {
@@ -503,6 +591,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const deleteTask = useCallback((taskId: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
     setEditingTaskId((curr) => (curr === taskId ? null : curr));
+    setDuplicatingTaskId((curr) => (curr === taskId ? null : curr));
   }, []);
 
   const moveTaskToStatus = useCallback((taskId: string, newStatus: TaskStatus) => {
@@ -588,6 +677,36 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     );
   }, []);
 
+  const addNote = useCallback((title?: string): string => {
+    const id = `note-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
+    const newNote: UniversityNote = {
+      id,
+      title: title?.trim() || 'Untitled Note',
+      content: '',
+      pinned: false,
+      updatedAt: new Date().toISOString(),
+    };
+    setNotes((prev) => [newNote, ...prev]);
+    return id;
+  }, []);
+
+  const updateNote = useCallback(
+    (noteId: string, partial: Partial<Pick<UniversityNote, 'title' | 'content' | 'pinned'>>) => {
+      const nowIso = new Date().toISOString();
+      setNotes((prev) =>
+        prev.map((n) => (n.id === noteId ? { ...n, ...partial, updatedAt: nowIso } : n))
+      );
+    },
+    []
+  );
+
+  const deleteNote = useCallback((noteId: string) => {
+    setNotes((prev) => {
+      const remaining = prev.filter((n) => n.id !== noteId);
+      return remaining.length > 0 ? remaining : INITIAL_NOTES;
+    });
+  }, []);
+
   const resetDefaults = useCallback(() => {
     setSubjects(INITIAL_SUBJECTS);
     setTasks(INITIAL_TASKS);
@@ -617,13 +736,16 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       value={{
         subjects,
         tasks,
+        notes,
         viewMode,
         theme,
         selectedSubjectId,
         searchQuery,
         editingTaskId,
+        duplicatingTaskId,
         draggedTaskId,
         hotkeyNotification,
+        toastMessage,
         syncConfig,
         syncStatus,
         syncError,
@@ -639,8 +761,11 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setSelectedSubjectId,
         setSearchQuery,
         setEditingTaskId,
+        setDuplicatingTaskId,
         setDraggedTaskId,
+        showToast,
         addTask,
+        duplicateTaskToSubjects,
         toggleTaskComplete,
         updateTask,
         deleteTask,
@@ -651,6 +776,9 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         addSubtask,
         deleteSubtask,
         updateSubject,
+        addNote,
+        updateNote,
+        deleteNote,
         resetDefaults,
         getSubjectById,
         getSubjectColor,

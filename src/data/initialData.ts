@@ -1,4 +1,4 @@
-import { Subject, HomeworkTask } from '../types';
+import { Subject, HomeworkTask, UniversityNote } from '../types';
 
 export const INITIAL_SUBJECTS: Subject[] = [
   {
@@ -166,5 +166,15 @@ export const INITIAL_TASKS: HomeworkTask[] = [
       { id: 'st-9', title: 'Add type hints and mypy check', completed: true },
       { id: 'st-10', title: 'Write pytest fixtures', completed: true },
     ],
+  },
+];
+
+export const INITIAL_NOTES: UniversityNote[] = [
+  {
+    id: 'note-uni-rules',
+    title: 'General University Rules',
+    content: '',
+    pinned: true,
+    updatedAt: '2026-11-17T00:00:00.000Z',
   },
 ];

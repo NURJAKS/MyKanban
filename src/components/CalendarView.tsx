@@ -2,7 +2,7 @@ import React, { useState, memo } from 'react';
 import { useKanban } from '../context/KanbanContext';
 import { DayOfWeek, HomeworkTask } from '../types';
 import { QuickAddBar } from './QuickAddBar';
-import { Check, GripVertical } from 'lucide-react';
+import { Check, GripVertical, Copy } from 'lucide-react';
 
 interface DayColumnDef {
   day: DayOfWeek;
@@ -59,6 +59,7 @@ export const CalendarView: React.FC = memo(() => {
     getSubjectColor,
     toggleTaskComplete,
     setEditingTaskId,
+    setDuplicatingTaskId,
     moveTaskToDay,
     setDraggedTaskId,
     draggedTaskId,
@@ -190,6 +191,18 @@ export const CalendarView: React.FC = memo(() => {
             </span>
           )}
         </div>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setDuplicatingTaskId(task.id);
+          }}
+          className="opacity-0 group-hover:opacity-80 hover:!opacity-100 p-1 rounded-md text-[#5f6368] dark:text-[#8e918f] hover:text-[#0b57d0] dark:hover:text-[#8ab4f8] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-all shrink-0"
+          title="Duplicate to lessons"
+        >
+          <Copy size={11} />
+        </button>
       </div>
     );
   };

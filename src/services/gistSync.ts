@@ -1,4 +1,4 @@
-import { Subject, HomeworkTask } from '../types';
+import { Subject, HomeworkTask, UniversityNote } from '../types';
 
 export const SYNC_FILENAME = 'mykanban-data.json';
 
@@ -7,6 +7,7 @@ export interface SyncPayload {
   updatedAt: string;
   subjects: Subject[];
   tasks: HomeworkTask[];
+  notes?: UniversityNote[];
 }
 
 export interface SyncConfig {

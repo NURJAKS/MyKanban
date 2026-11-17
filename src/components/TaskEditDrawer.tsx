@@ -1,7 +1,7 @@
 import React, { useState, useEffect, memo } from 'react';
 import { useKanban } from '../context/KanbanContext';
 import { TaskStatus, DayOfWeek } from '../types';
-import { X, Trash2, Check } from 'lucide-react';
+import { X, Trash2, Check, Copy } from 'lucide-react';
 
 const DAYS: DayOfWeek[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -9,6 +9,7 @@ export const TaskEditDrawer: React.FC = memo(() => {
   const {
     editingTaskId,
     setEditingTaskId,
+    setDuplicatingTaskId,
     tasks,
     subjects,
     updateTask,
@@ -100,6 +101,14 @@ export const TaskEditDrawer: React.FC = memo(() => {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setDuplicatingTaskId(task.id)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-[#0b57d0] dark:text-[#8ab4f8] bg-[#d3e3fd]/50 dark:bg-[#8ab4f8]/10 hover:bg-[#d3e3fd] dark:hover:bg-[#8ab4f8]/20 transition-colors"
+              title="Duplicate task to selected lessons"
+            >
+              <Copy size={13} />
+              <span>Duplicate</span>
+            </button>
             <button
               onClick={() => deleteTask(task.id)}
               className="p-1.5 rounded-lg text-[#5f6368] dark:text-[#8e918f] hover:text-[#b3261e] dark:hover:text-[#f28b82] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-colors"
