@@ -1,6 +1,24 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { Subject, HomeworkTask, TaskStatus, ViewMode, Theme } from '../types';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { Subject, HomeworkTask, TaskStatus, ViewMode, Theme, DayOfWeek } from '../types';
 import { INITIAL_SUBJECTS, INITIAL_TASKS } from '../data/initialData';
+
+const WEEKDAYS_BY_JS_DAY: DayOfWeek[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const migrateTask = (raw: HomeworkTask & { dueDate?: string; dueTime?: string }): HomeworkTask => {
+  if (raw.dayOfWeek !== undefined) {
+    const { dueDate: _d, dueTime: _t, ...rest } = raw;
+    return rest;
+  }
+  let derivedDay: DayOfWeek | null = null;
+  if (raw.dueDate) {
+    const parsed = new Date(raw.dueDate + 'T12:00:00');
+    if (!isNaN(parsed.getTime())) {
+      derivedDay = WEEKDAYS_BY_JS_DAY[parsed.getDay()];
+    }
+  }
+  const { dueDate: _d, dueTime: _t, ...rest } = raw;
+  return { ...rest, dayOfWeek: derivedDay };
+};
 
 interface KanbanContextType {
   subjects: Subject[];
@@ -20,12 +38,13 @@ interface KanbanContextType {
   setEditingTaskId: (id: string | null) => void;
   setDraggedTaskId: (id: string | null) => void;
 
-  addTask: (data: { title: string; subjectId: string; dueDate?: string; dueTime?: string; details?: string; status?: TaskStatus }) => void;
+  addTask: (data: { title: string; subjectId: string; dayOfWeek?: DayOfWeek | null; details?: string; status?: TaskStatus }) => void;
   toggleTaskComplete: (taskId: string) => void;
   updateTask: (taskId: string, partial: Partial<HomeworkTask>) => void;
   deleteTask: (taskId: string) => void;
   moveTaskToStatus: (taskId: string, newStatus: TaskStatus) => void;
   moveTaskToSubject: (taskId: string, newSubjectId: string) => void;
+  moveTaskToDay: (taskId: string, dayOfWeek: DayOfWeek | null) => void;
   toggleSubtask: (taskId: string, subtaskId: string) => void;
   addSubtask: (taskId: string, title: string) => void;
   deleteSubtask: (taskId: string, subtaskId: string) => void;
@@ -66,7 +85,11 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [tasks, setTasks] = useState<HomeworkTask[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_TASKS);
-      return saved ? JSON.parse(saved) : INITIAL_TASKS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed.map(migrateTask) : INITIAL_TASKS;
+      }
+      return INITIAL_TASKS;
     } catch {
       return INITIAL_TASKS;
     }
@@ -140,8 +163,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     (data: {
       title: string;
       subjectId: string;
-      dueDate?: string;
-      dueTime?: string;
+      dayOfWeek?: DayOfWeek | null;
       details?: string;
       status?: TaskStatus;
     }) => {
@@ -149,8 +171,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
         title: data.title.trim(),
         subjectId: data.subjectId || subjects[0].id,
-        dueDate: data.dueDate || new Date().toISOString().split('T')[0],
-        dueTime: data.dueTime || '23:59',
+        dayOfWeek: data.dayOfWeek !== undefined ? data.dayOfWeek : null,
         details: data.details || '',
         status: data.status || 'todo',
         completed: data.status === 'completed',
@@ -218,6 +239,12 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const moveTaskToSubject = useCallback((taskId: string, newSubjectId: string) => {
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, subjectId: newSubjectId } : t))
+    );
+  }, []);
+
+  const moveTaskToDay = useCallback((taskId: string, dayOfWeek: DayOfWeek | null) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, dayOfWeek } : t))
     );
   }, []);
 
@@ -321,6 +348,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         deleteTask,
         moveTaskToStatus,
         moveTaskToSubject,
+        moveTaskToDay,
         toggleSubtask,
         addSubtask,
         deleteSubtask,

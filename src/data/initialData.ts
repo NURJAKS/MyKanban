@@ -73,12 +73,6 @@ export const INITIAL_SUBJECTS: Subject[] = [
   },
 ];
 
-const getTodayOffset = (days: number): string => {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
-};
-
 export const INITIAL_TASKS: HomeworkTask[] = [
   {
     id: 'task-1',
@@ -86,10 +80,9 @@ export const INITIAL_TASKS: HomeworkTask[] = [
     title: 'Essay: Epistemology & Ethics of Autonomous Systems',
     details: 'Write 1200 words comparing Kantian ethics and utilitarianism in tech.',
     status: 'todo',
-    dueDate: getTodayOffset(1),
-    dueTime: '23:59',
+    dayOfWeek: 'Wed',
     completed: false,
-    createdAt: getTodayOffset(-2),
+    createdAt: '2026-11-15',
     subtasks: [
       { id: 'st-1', title: 'Read Chapter 4 from course reader', completed: true },
       { id: 'st-2', title: 'Draft thesis and outline arguments', completed: false },
@@ -101,10 +94,9 @@ export const INITIAL_TASKS: HomeworkTask[] = [
     title: 'Lab #3: CPU Pipelining & Hazard Detection',
     details: 'Measure instruction stalls and cache miss rates on 5-stage pipeline.',
     status: 'in_progress',
-    dueDate: getTodayOffset(2),
-    dueTime: '18:00',
+    dayOfWeek: 'Thu',
     completed: false,
-    createdAt: getTodayOffset(-3),
+    createdAt: '2026-11-14',
     subtasks: [
       { id: 'st-3', title: 'Identify RAW data hazards in assembly trace', completed: true },
       { id: 'st-4', title: 'Calculate CPI speedup with forwarding unit', completed: false },
@@ -116,10 +108,9 @@ export const INITIAL_TASKS: HomeworkTask[] = [
     title: 'Implement RSA Key Generation & AES-GCM',
     details: 'Write modular exponentiation and verify padding scheme against test vectors.',
     status: 'todo',
-    dueDate: getTodayOffset(0),
-    dueTime: '23:59',
+    dayOfWeek: 'Fri',
     completed: false,
-    createdAt: getTodayOffset(-1),
+    createdAt: '2026-11-16',
     subtasks: [
       { id: 'st-5', title: 'Miller-Rabin primality test', completed: true },
       { id: 'st-6', title: 'Extended Euclidean algorithm for private key', completed: false },
@@ -131,10 +122,9 @@ export const INITIAL_TASKS: HomeworkTask[] = [
     title: 'EDA & Feature Engineering on Customer Churn Dataset',
     details: 'Clean missing values, plot correlation heatmap, and submit Jupyter notebook.',
     status: 'todo',
-    dueDate: getTodayOffset(3),
-    dueTime: '20:00',
+    dayOfWeek: 'Thu',
     completed: false,
-    createdAt: getTodayOffset(-1),
+    createdAt: '2026-11-16',
     subtasks: [],
   },
   {
@@ -143,10 +133,9 @@ export const INITIAL_TASKS: HomeworkTask[] = [
     title: 'Verilog FSM: Traffic Light Controller Simulation',
     details: 'Design state transition diagram and simulate testbench waveforms.',
     status: 'in_progress',
-    dueDate: getTodayOffset(4),
-    dueTime: '17:00',
+    dayOfWeek: 'Fri',
     completed: false,
-    createdAt: getTodayOffset(-2),
+    createdAt: '2026-11-15',
     subtasks: [
       { id: 'st-7', title: 'Draw Moore state machine diagram', completed: true },
       { id: 'st-8', title: 'Verify timing diagram in Vivado/GTKWave', completed: false },
@@ -158,10 +147,9 @@ export const INITIAL_TASKS: HomeworkTask[] = [
     title: 'Disk Image Acquisition & Deleted File Recovery',
     details: 'Analyze raw NTFS image with Autopsy/SleuthKit and document SHA-256 hashes.',
     status: 'todo',
-    dueDate: getTodayOffset(5),
-    dueTime: '23:59',
+    dayOfWeek: 'Wed',
     completed: false,
-    createdAt: getTodayOffset(-1),
+    createdAt: '2026-11-16',
     subtasks: [],
   },
   {
@@ -170,11 +158,10 @@ export const INITIAL_TASKS: HomeworkTask[] = [
     title: 'Build Async CLI & Unit Tests with pytest',
     details: 'Refactor data parser using asyncio and reach > 90% test coverage.',
     status: 'completed',
-    dueDate: getTodayOffset(-1),
-    dueTime: '15:00',
+    dayOfWeek: 'Mon',
     completed: true,
-    completedAt: getTodayOffset(-1),
-    createdAt: getTodayOffset(-5),
+    completedAt: '2026-11-16',
+    createdAt: '2026-11-12',
     subtasks: [
       { id: 'st-9', title: 'Add type hints and mypy check', completed: true },
       { id: 'st-10', title: 'Write pytest fixtures', completed: true },

@@ -1,7 +1,6 @@
 import React, { memo } from 'react';
 import { HomeworkTask } from '../types';
 import { useKanban } from '../context/KanbanContext';
-import { formatGoogleDate } from '../utils/dateUtils';
 import { Check, GripVertical, ListTodo, ChevronRight } from 'lucide-react';
 
 interface GoogleTaskItemProps {
@@ -17,12 +16,10 @@ export const GoogleTaskItem: React.FC<GoogleTaskItemProps> = memo(({ task }) => 
     setEditingTaskId,
     setDraggedTaskId,
     draggedTaskId,
-    theme,
   } = useKanban();
 
   const subject = getSubjectById(task.subjectId);
   const color = getSubjectColor(subject);
-  const dueInfo = formatGoogleDate(task.dueDate, task.dueTime, theme === 'dark');
   const isDragging = draggedTaskId === task.id;
 
   const totalSubtasks = task.subtasks.length;
@@ -97,7 +94,7 @@ export const GoogleTaskItem: React.FC<GoogleTaskItemProps> = memo(({ task }) => 
           </p>
         )}
 
-        {/* Chips row: Due Date, Subject, Subtasks */}
+        {/* Chips row: Subject, Weekday, Subtasks */}
         <div className="flex flex-wrap items-center gap-1.5 mt-2">
           {/* Subject chip */}
           {subject && (
@@ -110,12 +107,10 @@ export const GoogleTaskItem: React.FC<GoogleTaskItemProps> = memo(({ task }) => 
             </span>
           )}
 
-          {/* Due date chip */}
-          {dueInfo && (
-            <span
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] ${dueInfo.chipClass}`}
-            >
-              <span>{dueInfo.text}</span>
+          {/* Day of week chip */}
+          {task.dayOfWeek && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium text-[#0b57d0] dark:text-[#8ab4f8] bg-[#d3e3fd]/60 dark:bg-[#8ab4f8]/10 border border-[#a8c7fa]/60 dark:border-[#8ab4f8]/25">
+              {task.dayOfWeek}
             </span>
           )}
 

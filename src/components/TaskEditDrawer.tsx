@@ -1,7 +1,9 @@
 import React, { useState, useEffect, memo } from 'react';
 import { useKanban } from '../context/KanbanContext';
-import { TaskStatus } from '../types';
-import { X, Calendar, Clock, Trash2, Check } from 'lucide-react';
+import { TaskStatus, DayOfWeek } from '../types';
+import { X, Trash2, Check } from 'lucide-react';
+
+const DAYS: DayOfWeek[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export const TaskEditDrawer: React.FC = memo(() => {
   const {
@@ -22,8 +24,7 @@ export const TaskEditDrawer: React.FC = memo(() => {
   const [details, setDetails] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [status, setStatus] = useState<TaskStatus>('todo');
-  const [dueDate, setDueDate] = useState('');
-  const [dueTime, setDueTime] = useState('');
+  const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek | null>(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
   useEffect(() => {
@@ -32,8 +33,7 @@ export const TaskEditDrawer: React.FC = memo(() => {
       setDetails(task.details || '');
       setSubjectId(task.subjectId);
       setStatus(task.status);
-      setDueDate(task.dueDate || '');
-      setDueTime(task.dueTime || '');
+      setDayOfWeek(task.dayOfWeek || null);
     }
   }, [task]);
 
@@ -64,14 +64,9 @@ export const TaskEditDrawer: React.FC = memo(() => {
     });
   };
 
-  const handleDateChange = (newDate: string) => {
-    setDueDate(newDate);
-    updateTask(task.id, { dueDate: newDate });
-  };
-
-  const handleTimeChange = (newTime: string) => {
-    setDueTime(newTime);
-    updateTask(task.id, { dueTime: newTime });
+  const handleDayChange = (newDay: DayOfWeek | null) => {
+    setDayOfWeek(newDay);
+    updateTask(task.id, { dayOfWeek: newDay });
   };
 
   const handleAddSubtaskSubmit = (e: React.FormEvent) => {
@@ -153,31 +148,40 @@ export const TaskEditDrawer: React.FC = memo(() => {
             </select>
           </div>
 
-          {/* Date & Time */}
+          {/* Day of Week Selector */}
           <div>
             <label className="block text-[11px] font-medium text-[#5f6368] dark:text-[#8e918f] uppercase tracking-wider mb-1.5">
-              Due Date & Time
+              Planned Day of Week
             </label>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 flex items-center gap-2 bg-[#f0f4f9] dark:bg-[#282a2c] border border-[#e0e2ec] dark:border-[#3c4043] rounded-xl px-3 py-2 text-sm text-[#1f1f1f] dark:text-[#e3e3e3]">
-                <Calendar size={15} className="text-[#5f6368] dark:text-[#8e918f]" />
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => handleDateChange(e.target.value)}
-                  className="bg-transparent text-xs text-[#1f1f1f] dark:text-[#e3e3e3] focus:outline-none w-full cursor-pointer"
-                />
-              </div>
-
-              <div className="w-32 flex items-center gap-2 bg-[#f0f4f9] dark:bg-[#282a2c] border border-[#e0e2ec] dark:border-[#3c4043] rounded-xl px-3 py-2 text-sm text-[#1f1f1f] dark:text-[#e3e3e3]">
-                <Clock size={15} className="text-[#5f6368] dark:text-[#8e918f]" />
-                <input
-                  type="time"
-                  value={dueTime}
-                  onChange={(e) => handleTimeChange(e.target.value)}
-                  className="bg-transparent text-xs text-[#1f1f1f] dark:text-[#e3e3e3] focus:outline-none w-full cursor-pointer"
-                />
-              </div>
+            <div className="flex flex-wrap gap-1.5">
+              {DAYS.map((d) => {
+                const isSelected = dayOfWeek === d;
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => handleDayChange(isSelected ? null : d)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      isSelected
+                        ? 'bg-[#d3e3fd] text-[#0b57d0] border-[#a8c7fa] dark:bg-[#8ab4f8]/20 dark:text-[#8ab4f8] dark:border-[#8ab4f8]/50'
+                        : 'bg-[#f0f4f9] dark:bg-[#282a2c] text-[#444746] dark:text-[#c4c7c5] border-[#e0e2ec] dark:border-[#3c4043] hover:border-[#c4c7c5] dark:hover:border-[#5f6368]'
+                    }`}
+                  >
+                    {d}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => handleDayChange(null)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                  dayOfWeek === null
+                    ? 'bg-[#e0e2ec] text-[#1f1f1f] border-[#c4c7c5] dark:bg-[#3c4043] dark:text-[#e3e3e3] dark:border-[#5f6368]'
+                    : 'bg-transparent text-[#747775] dark:text-[#8e918f] border-transparent hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c]'
+                }`}
+              >
+                None
+              </button>
             </div>
           </div>
 

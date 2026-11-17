@@ -2,6 +2,8 @@ export type TaskStatus = 'todo' | 'in_progress' | 'completed';
 
 export type Theme = 'dark' | 'light';
 
+export type DayOfWeek = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
+
 export interface SubTask {
   id: string;
   title: string;
@@ -25,8 +27,7 @@ export interface HomeworkTask {
   title: string;
   details?: string;
   status: TaskStatus;
-  dueDate: string; // YYYY-MM-DD
-  dueTime?: string; // HH:mm
+  dayOfWeek?: DayOfWeek | null;
   subtasks: SubTask[];
   completed: boolean;
   completedAt?: string;
