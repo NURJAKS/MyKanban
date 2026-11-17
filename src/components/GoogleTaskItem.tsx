@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { HomeworkTask } from '../types';
 import { useKanban } from '../context/KanbanContext';
 import { Check, GripVertical, ListTodo, ChevronRight, Copy } from 'lucide-react';
+import { formatTaskDateBadge } from '../utils/dateUtils';
 
 interface GoogleTaskItemProps {
   task: HomeworkTask;
@@ -25,6 +26,7 @@ export const GoogleTaskItem: React.FC<GoogleTaskItemProps> = memo(({ task }) => 
 
   const totalSubtasks = task.subtasks.length;
   const completedSubtasks = task.subtasks.filter((s) => s.completed).length;
+  const dateBadge = formatTaskDateBadge(task.dueDate, task.dayOfWeek);
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('text/plain', task.id);
@@ -110,10 +112,18 @@ export const GoogleTaskItem: React.FC<GoogleTaskItemProps> = memo(({ task }) => 
             </span>
           )}
 
-          {/* Day of week chip */}
-          {task.dayOfWeek && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium text-[#0b57d0] dark:text-[#8ab4f8] bg-[#d3e3fd]/60 dark:bg-[#8ab4f8]/10 border border-[#a8c7fa]/60 dark:border-[#8ab4f8]/25">
-              {task.dayOfWeek}
+          {/* Date / Day chip */}
+          {dateBadge && (
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium border ${
+                dateBadge.isToday
+                  ? 'text-[#0b57d0] dark:text-[#8ab4f8] bg-[#d3e3fd]/80 dark:bg-[#8ab4f8]/20 border-[#a8c7fa] dark:border-[#8ab4f8]/40 font-semibold'
+                  : dateBadge.isOverdue && !task.completed
+                  ? 'text-[#b3261e] dark:text-[#f28b82] bg-[#f9dedc]/70 dark:bg-[#f28b82]/15 border-[#f2b8b5] dark:border-[#f28b82]/30'
+                  : 'text-[#0b57d0] dark:text-[#8ab4f8] bg-[#d3e3fd]/60 dark:bg-[#8ab4f8]/10 border-[#a8c7fa]/60 dark:border-[#8ab4f8]/25'
+              }`}
+            >
+              {dateBadge.label}
             </span>
           )}
 

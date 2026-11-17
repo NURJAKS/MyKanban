@@ -1,7 +1,8 @@
 import React, { useState, useEffect, memo } from 'react';
 import { useKanban } from '../context/KanbanContext';
 import { TaskStatus, DayOfWeek } from '../types';
-import { X, Trash2, Check, Copy } from 'lucide-react';
+import { X, Trash2, Check, Copy, Calendar } from 'lucide-react';
+import { formatDateISO, getDayOfWeekFromDate, getMondayOfWeek, parseDateISO } from '../utils/dateUtils';
 
 const DAYS: DayOfWeek[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -26,6 +27,7 @@ export const TaskEditDrawer: React.FC = memo(() => {
   const [subjectId, setSubjectId] = useState('');
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek | null>(null);
+  const [dueDate, setDueDate] = useState<string>('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
   useEffect(() => {
@@ -35,6 +37,7 @@ export const TaskEditDrawer: React.FC = memo(() => {
       setSubjectId(task.subjectId);
       setStatus(task.status);
       setDayOfWeek(task.dayOfWeek || null);
+      setDueDate(task.dueDate || '');
     }
   }, [task]);
 
@@ -66,8 +69,31 @@ export const TaskEditDrawer: React.FC = memo(() => {
   };
 
   const handleDayChange = (newDay: DayOfWeek | null) => {
+    if (!newDay) {
+      setDayOfWeek(null);
+      setDueDate('');
+      updateTask(task.id, { dayOfWeek: null, dueDate: null });
+      return;
+    }
+    const baseMonday = dueDate ? getMondayOfWeek(parseDateISO(dueDate)) : getMondayOfWeek(new Date());
+    const idx = DAYS.indexOf(newDay);
+    const target = new Date(baseMonday.getFullYear(), baseMonday.getMonth(), baseMonday.getDate() + idx, 12, 0, 0);
+    const nextDateStr = formatDateISO(target);
     setDayOfWeek(newDay);
-    updateTask(task.id, { dayOfWeek: newDay });
+    setDueDate(nextDateStr);
+    updateTask(task.id, { dayOfWeek: newDay, dueDate: nextDateStr });
+  };
+
+  const handleDueDateChange = (nextDateStr: string) => {
+    setDueDate(nextDateStr);
+    if (!nextDateStr) {
+      setDayOfWeek(null);
+      updateTask(task.id, { dueDate: null, dayOfWeek: null });
+      return;
+    }
+    const derivedDay = getDayOfWeekFromDate(parseDateISO(nextDateStr));
+    setDayOfWeek(derivedDay);
+    updateTask(task.id, { dueDate: nextDateStr, dayOfWeek: derivedDay });
   };
 
   const handleAddSubtaskSubmit = (e: React.FormEvent) => {
@@ -157,11 +183,31 @@ export const TaskEditDrawer: React.FC = memo(() => {
             </select>
           </div>
 
-          {/* Day of Week Selector */}
+          {/* Planned Date & Day of Week Selector */}
           <div>
             <label className="block text-[11px] font-medium text-[#5f6368] dark:text-[#8e918f] uppercase tracking-wider mb-1.5">
-              Planned Day of Week
+              Scheduled Date
             </label>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="relative flex-1">
+                <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5f6368] dark:text-[#8e918f] pointer-events-none" />
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => handleDueDateChange(e.target.value)}
+                  className="w-full bg-[#f0f4f9] dark:bg-[#282a2c] text-xs text-[#1f1f1f] dark:text-[#e3e3e3] border border-[#e0e2ec] dark:border-[#3c4043] rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:border-[#0b57d0] dark:focus:border-[#8ab4f8]"
+                />
+              </div>
+              {(dueDate || dayOfWeek) && (
+                <button
+                  type="button"
+                  onClick={() => handleDayChange(null)}
+                  className="px-2.5 py-2 rounded-xl text-xs font-medium bg-[#f0f4f9] dark:bg-[#282a2c] text-[#5f6368] dark:text-[#8e918f] hover:text-[#1f1f1f] dark:hover:text-[#e3e3e3] border border-[#e0e2ec] dark:border-[#3c4043]"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {DAYS.map((d) => {
                 const isSelected = dayOfWeek === d;
@@ -180,17 +226,6 @@ export const TaskEditDrawer: React.FC = memo(() => {
                   </button>
                 );
               })}
-              <button
-                type="button"
-                onClick={() => handleDayChange(null)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  dayOfWeek === null
-                    ? 'bg-[#e0e2ec] text-[#1f1f1f] border-[#c4c7c5] dark:bg-[#3c4043] dark:text-[#e3e3e3] dark:border-[#5f6368]'
-                    : 'bg-transparent text-[#747775] dark:text-[#8e918f] border-transparent hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c]'
-                }`}
-              >
-                None
-              </button>
             </div>
           </div>
 

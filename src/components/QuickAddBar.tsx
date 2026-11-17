@@ -9,6 +9,7 @@ interface QuickAddBarProps {
   defaultStatus?: TaskStatus;
   defaultSubjectId?: string;
   defaultDayOfWeek?: DayOfWeek | null;
+  defaultDueDate?: string | null;
   placeholder?: string;
   compact?: boolean;
 }
@@ -17,6 +18,7 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = memo(({
   defaultStatus = 'todo',
   defaultSubjectId,
   defaultDayOfWeek,
+  defaultDueDate,
   placeholder = 'Add a task',
   compact = false,
 }) => {
@@ -37,6 +39,7 @@ export const QuickAddBar: React.FC<QuickAddBarProps> = memo(({
       subjectId: defaultSubjectId || subjectId,
       status: defaultStatus,
       dayOfWeek: defaultDayOfWeek !== undefined ? defaultDayOfWeek : (dayOfWeek || null),
+      dueDate: defaultDueDate !== undefined ? defaultDueDate : null,
     });
 
     setTitle('');

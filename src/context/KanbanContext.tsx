@@ -12,20 +12,20 @@ export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 
 const WEEKDAYS_BY_JS_DAY: DayOfWeek[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const migrateTask = (raw: HomeworkTask & { dueDate?: string; dueTime?: string }): HomeworkTask => {
-  if (raw.dayOfWeek !== undefined) {
-    const { dueDate: _d, dueTime: _t, ...rest } = raw;
-    return rest;
-  }
-  let derivedDay: DayOfWeek | null = null;
-  if (raw.dueDate) {
+const migrateTask = (raw: HomeworkTask & { dueTime?: string }): HomeworkTask => {
+  let derivedDay: DayOfWeek | null = raw.dayOfWeek ?? null;
+  if (!derivedDay && raw.dueDate) {
     const parsed = new Date(raw.dueDate + 'T12:00:00');
     if (!isNaN(parsed.getTime())) {
       derivedDay = WEEKDAYS_BY_JS_DAY[parsed.getDay()];
     }
   }
-  const { dueDate: _d, dueTime: _t, ...rest } = raw;
-  return { ...rest, dayOfWeek: derivedDay };
+  const { dueTime: _t, ...rest } = raw;
+  return {
+    ...rest,
+    dueDate: raw.dueDate ?? null,
+    dayOfWeek: derivedDay,
+  };
 };
 
 interface KanbanContextType {
@@ -63,17 +63,25 @@ interface KanbanContextType {
   setDraggedTaskId: (id: string | null) => void;
   showToast: (msg: string) => void;
 
-  addTask: (data: { title: string; subjectId: string; dayOfWeek?: DayOfWeek | null; details?: string; status?: TaskStatus }) => void;
+  addTask: (data: {
+    title: string;
+    subjectId: string;
+    dueDate?: string | null;
+    dayOfWeek?: DayOfWeek | null;
+    details?: string;
+    status?: TaskStatus;
+  }) => void;
   duplicateTaskToSubjects: (
     taskId: string,
     targetSubjectIds: string[],
-    options?: { resetStatus?: boolean; dayOfWeek?: DayOfWeek | null }
+    options?: { resetStatus?: boolean; dayOfWeek?: DayOfWeek | null; dueDate?: string | null }
   ) => number;
   toggleTaskComplete: (taskId: string) => void;
   updateTask: (taskId: string, partial: Partial<HomeworkTask>) => void;
   deleteTask: (taskId: string) => void;
   moveTaskToStatus: (taskId: string, newStatus: TaskStatus) => void;
   moveTaskToSubject: (taskId: string, newSubjectId: string) => void;
+  moveTaskToDate: (taskId: string, dueDate: string | null, dayOfWeek: DayOfWeek | null) => void;
   moveTaskToDay: (taskId: string, dayOfWeek: DayOfWeek | null) => void;
   toggleSubtask: (taskId: string, subtaskId: string) => void;
   addSubtask: (taskId: string, title: string) => void;
@@ -499,15 +507,24 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     (data: {
       title: string;
       subjectId: string;
+      dueDate?: string | null;
       dayOfWeek?: DayOfWeek | null;
       details?: string;
       status?: TaskStatus;
     }) => {
+      let derivedDay = data.dayOfWeek ?? null;
+      if (!derivedDay && data.dueDate) {
+        const parsed = new Date(data.dueDate + 'T12:00:00');
+        if (!isNaN(parsed.getTime())) {
+          derivedDay = WEEKDAYS_BY_JS_DAY[parsed.getDay()];
+        }
+      }
       const newTask: HomeworkTask = {
         id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
         title: data.title.trim(),
         subjectId: data.subjectId || subjects[0].id,
-        dayOfWeek: data.dayOfWeek !== undefined ? data.dayOfWeek : null,
+        dueDate: data.dueDate !== undefined ? data.dueDate : null,
+        dayOfWeek: derivedDay,
         details: data.details || '',
         status: data.status || 'todo',
         completed: data.status === 'completed',
@@ -523,7 +540,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     (
       taskId: string,
       targetSubjectIds: string[],
-      options?: { resetStatus?: boolean; dayOfWeek?: DayOfWeek | null }
+      options?: { resetStatus?: boolean; dayOfWeek?: DayOfWeek | null; dueDate?: string | null }
     ): number => {
       const source = tasksRef.current.find((t) => t.id === taskId);
       if (!source || targetSubjectIds.length === 0) return 0;
@@ -531,6 +548,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const today = new Date().toISOString().split('T')[0];
       const baseTs = Date.now();
       const resetStatus = Boolean(options?.resetStatus);
+      const nextDue = options?.dueDate !== undefined ? options.dueDate : source.dueDate;
       const nextDay = options?.dayOfWeek !== undefined ? options.dayOfWeek : source.dayOfWeek;
 
       const clones: HomeworkTask[] = targetSubjectIds.map((subjId, idx) => ({
@@ -541,6 +559,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         status: resetStatus ? 'todo' : source.status,
         completed: resetStatus ? false : source.completed,
         completedAt: resetStatus ? undefined : source.completedAt,
+        dueDate: nextDue,
         dayOfWeek: nextDay,
         createdAt: today,
         subtasks: source.subtasks.map((st, stIdx) => ({
@@ -618,10 +637,27 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     );
   }, []);
 
+  const moveTaskToDate = useCallback(
+    (taskId: string, dueDate: string | null, dayOfWeek: DayOfWeek | null) => {
+      setDraggedTaskId(null);
+      let derivedDay = dayOfWeek;
+      if (!derivedDay && dueDate) {
+        const parsed = new Date(dueDate + 'T12:00:00');
+        if (!isNaN(parsed.getTime())) {
+          derivedDay = WEEKDAYS_BY_JS_DAY[parsed.getDay()];
+        }
+      }
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, dueDate, dayOfWeek: derivedDay } : t))
+      );
+    },
+    []
+  );
+
   const moveTaskToDay = useCallback((taskId: string, dayOfWeek: DayOfWeek | null) => {
     setDraggedTaskId(null);
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, dayOfWeek } : t))
+      prev.map((t) => (t.id === taskId ? { ...t, dayOfWeek, dueDate: null } : t))
     );
   }, []);
 
@@ -771,6 +807,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         deleteTask,
         moveTaskToStatus,
         moveTaskToSubject,
+        moveTaskToDate,
         moveTaskToDay,
         toggleSubtask,
         addSubtask,

@@ -1,26 +1,26 @@
-import React, { useState, memo } from 'react';
+import React, { useState, useRef, memo } from 'react';
 import { useKanban } from '../context/KanbanContext';
 import { DayOfWeek, HomeworkTask } from '../types';
 import { QuickAddBar } from './QuickAddBar';
-import { Check, GripVertical, Copy } from 'lucide-react';
+import { Check, GripVertical, Copy, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import {
+  getMondayOfWeek,
+  getWeekDays,
+  formatWeekHeader,
+  CalendarDayInfo,
+} from '../utils/dateUtils';
 
-interface DayColumnDef {
-  day: DayOfWeek;
-  label: string;
-  isToday: boolean;
-}
-
-const JS_DAY_TO_WEEKDAY: DayOfWeek[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-const WEEK_DAYS: { day: DayOfWeek; label: string }[] = [
-  { day: 'Mon', label: 'MON' },
-  { day: 'Tue', label: 'TUE' },
-  { day: 'Wed', label: 'WED' },
-  { day: 'Thu', label: 'THU' },
-  { day: 'Fri', label: 'FRI' },
-  { day: 'Sat', label: 'SAT' },
-  { day: 'Sun', label: 'SUN' },
-];
+const isTaskForCalendarDay = (
+  task: HomeworkTask,
+  col: CalendarDayInfo,
+  isCurrentWeek: boolean
+): boolean => {
+  if (task.dueDate) {
+    return task.dueDate === col.dateStr;
+  }
+  // Backwards compatibility for legacy tasks that only have dayOfWeek
+  return isCurrentWeek && task.dayOfWeek === col.day;
+};
 
 export const CalendarView: React.FC = memo(() => {
   const {
@@ -30,28 +30,53 @@ export const CalendarView: React.FC = memo(() => {
     toggleTaskComplete,
     setEditingTaskId,
     setDuplicatingTaskId,
-    moveTaskToDay,
+    moveTaskToDate,
     setDraggedTaskId,
     draggedTaskId,
   } = useKanban();
 
-  const [activeDropDay, setActiveDropDay] = useState<DayOfWeek | 'unscheduled' | null>(null);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [activeDropDate, setActiveDropDate] = useState<string | 'unscheduled' | null>(null);
   const [mobileSelectedDay, setMobileSelectedDay] = useState<DayOfWeek | 'all'>('all');
+
+  // Touch swipe tracking for horizontal week navigation
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
   const tasks = getFilteredTasks();
-  const todayWeekday = JS_DAY_TO_WEEKDAY[new Date().getDay()];
+  const isCurrentWeek = weekOffset === 0;
+  const monday = getMondayOfWeek(new Date(), weekOffset);
+  const dayColumns = getWeekDays(monday);
+  const { title: monthTitle, subtitle: rangeSubtitle } = formatWeekHeader(monday);
 
-  const dayColumns: DayColumnDef[] = WEEK_DAYS.map((d) => ({
-    day: d.day,
-    label: d.label,
-    isToday: d.day === todayWeekday,
-  }));
+  const unscheduledTasks = tasks.filter((t) => !t.dueDate && !t.dayOfWeek);
 
-  const unscheduledTasks = tasks.filter((t) => !t.dayOfWeek);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+    };
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || e.changedTouches.length !== 1) return;
+    const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+
+    // Trigger week switch only on clear horizontal swipe
+    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) {
+        setWeekOffset((prev) => prev + 1);
+      } else {
+        setWeekOffset((prev) => prev - 1);
+      }
+    }
+  };
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData('text/plain', taskId);
     e.dataTransfer.effectAllowed = 'move';
-    // Defer visual drag state so Chrome captures the drag ghost cleanly without aborting
     requestAnimationFrame(() => {
       setDraggedTaskId(taskId);
     });
@@ -59,38 +84,42 @@ export const CalendarView: React.FC = memo(() => {
 
   const handleDragEnd = () => {
     setDraggedTaskId(null);
-    setActiveDropDay(null);
+    setActiveDropDate(null);
   };
 
-  const handleDragEnter = (e: React.DragEvent, target: DayOfWeek | 'unscheduled') => {
+  const handleDragEnter = (e: React.DragEvent, target: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    if (activeDropDay !== target) {
-      setActiveDropDay(target);
+    if (activeDropDate !== target) {
+      setActiveDropDate(target);
     }
   };
 
-  const handleDragOver = (e: React.DragEvent, target: DayOfWeek | 'unscheduled') => {
+  const handleDragOver = (e: React.DragEvent, target: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    if (activeDropDay !== target) {
-      setActiveDropDay(target);
+    if (activeDropDate !== target) {
+      setActiveDropDate(target);
     }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     const related = e.relatedTarget as Node | null;
     if (!e.currentTarget.contains(related)) {
-      setActiveDropDay(null);
+      setActiveDropDate(null);
     }
   };
 
-  const handleDrop = (e: React.DragEvent, targetDay: DayOfWeek | null) => {
+  const handleDropOnDay = (e: React.DragEvent, col: CalendarDayInfo | null) => {
     e.preventDefault();
-    setActiveDropDay(null);
+    setActiveDropDate(null);
     const taskId = e.dataTransfer.getData('text/plain') || draggedTaskId;
     if (taskId) {
-      moveTaskToDay(taskId, targetDay);
+      if (col) {
+        moveTaskToDate(taskId, col.dateStr, col.day);
+      } else {
+        moveTaskToDate(taskId, null, null);
+      }
     }
   };
 
@@ -177,16 +206,84 @@ export const CalendarView: React.FC = memo(() => {
   };
 
   return (
-    <div className="flex-1 flex flex-col gap-3 pb-6">
-      {/* Unscheduled / Backlog Drop Tray (only shown when unscheduled tasks exist so layout never jumps on dragStart) */}
+    <div
+      className="flex-1 flex flex-col gap-3 pb-6"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Google Calendar Style Week Navigation Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-[#18191a] border border-[#e0e2ec] dark:border-[#282a2c] rounded-2xl px-4 py-2.5 shadow-sm dark:shadow-none">
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setWeekOffset(0)}
+            disabled={isCurrentWeek}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
+              isCurrentWeek
+                ? 'bg-[#d3e3fd]/40 dark:bg-[#8ab4f8]/10 text-[#0b57d0] dark:text-[#8ab4f8] border-[#a8c7fa]/60 dark:border-[#8ab4f8]/30'
+                : 'bg-[#f8fafd] dark:bg-[#1e1f20] text-[#1f1f1f] dark:text-[#e3e3e3] border-[#e0e2ec] dark:border-[#3c4043] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c]'
+            }`}
+          >
+            Today
+          </button>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setWeekOffset((prev) => prev - 1)}
+              className="p-1.5 rounded-full text-[#5f6368] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-colors"
+              title="Previous week"
+              aria-label="Previous week"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setWeekOffset((prev) => prev + 1)}
+              className="p-1.5 rounded-full text-[#5f6368] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-colors"
+              title="Next week"
+              aria-label="Next week"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          <div className="flex items-baseline gap-2.5 ml-1">
+            <h2 className="text-sm sm:text-base font-semibold text-[#1f1f1f] dark:text-[#e3e3e3] tracking-tight">
+              {monthTitle}
+            </h2>
+            <span className="text-xs text-[#5f6368] dark:text-[#8e918f] hidden sm:inline font-mono">
+              {rangeSubtitle}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-[11px] text-[#5f6368] dark:text-[#8e918f]">
+          <CalendarIcon size={13} className="text-[#0b57d0] dark:text-[#8ab4f8]" />
+          <span className="hidden sm:inline">
+            {weekOffset === 0
+              ? 'This Week'
+              : weekOffset === 1
+              ? 'Next Week'
+              : weekOffset === -1
+              ? 'Last Week'
+              : weekOffset > 0
+              ? `+${weekOffset} weeks`
+              : `${weekOffset} weeks`}
+          </span>
+          <span className="sm:hidden">{rangeSubtitle}</span>
+        </div>
+      </div>
+
+      {/* Unscheduled / Backlog Drop Tray */}
       {unscheduledTasks.length > 0 && (
         <div
           onDragEnter={(e) => handleDragEnter(e, 'unscheduled')}
           onDragOver={(e) => handleDragOver(e, 'unscheduled')}
           onDragLeave={handleDragLeave}
-          onDrop={(e) => handleDrop(e, null)}
+          onDrop={(e) => handleDropOnDay(e, null)}
           className={`rounded-2xl border p-3 transition-colors ${
-            activeDropDay === 'unscheduled'
+            activeDropDate === 'unscheduled'
               ? 'gtasks-drop-target bg-[#f0f4f9] dark:bg-[#1e1f20]'
               : 'bg-white dark:bg-[#18191a] border-[#e0e2ec] dark:border-[#282a2c]'
           }`}
@@ -219,11 +316,11 @@ export const CalendarView: React.FC = memo(() => {
           All Week
         </button>
         {dayColumns.map((col) => {
-          const count = tasks.filter((t) => t.dayOfWeek === col.day).length;
+          const count = tasks.filter((t) => isTaskForCalendarDay(t, col, isCurrentWeek)).length;
           const isSelected = mobileSelectedDay === col.day;
           return (
             <button
-              key={col.day}
+              key={col.dateStr}
               onClick={() => setMobileSelectedDay(isSelected ? 'all' : col.day)}
               className={`px-2.5 py-1 rounded-full text-xs font-medium shrink-0 border transition-colors flex items-center gap-1 ${
                 isSelected
@@ -233,28 +330,31 @@ export const CalendarView: React.FC = memo(() => {
                   : 'bg-white dark:bg-[#1e1f20] text-[#5f6368] dark:text-[#8e918f] border-[#e0e2ec] dark:border-[#282a2c]'
               }`}
             >
-              <span>{col.day}</span>
+              <span>
+                {col.day} {col.dayNum}
+              </span>
               {count > 0 && <span className="text-[10px] font-mono opacity-80">({count})</span>}
             </button>
           );
         })}
       </div>
 
-      {/* Weekly 7-Day Grid (stacked vertically on mobile, 7-column grid on desktop) */}
+      {/* Weekly 7-Day Grid */}
       <div className="flex-1 md:overflow-x-auto">
         <div className="flex flex-col gap-3 md:gap-0 md:grid md:grid-cols-7 md:min-w-[1000px] md:border md:border-[#e0e2ec] md:dark:border-[#282a2c] md:rounded-2xl md:bg-white md:dark:bg-[#18191a] md:overflow-hidden md:shadow-sm md:min-h-[520px]">
-          {dayColumns.map((col) => {
-            const dayTasks = tasks.filter((t) => t.dayOfWeek === col.day);
-            const isOver = activeDropDay === col.day;
+          {dayColumns.map((col, idx) => {
+            const dayTasks = tasks.filter((t) => isTaskForCalendarDay(t, col, isCurrentWeek));
+            const isOver = activeDropDate === col.dateStr;
             const hiddenOnMobile = mobileSelectedDay !== 'all' && mobileSelectedDay !== col.day;
+            const showMonthTag = col.dayNum === 1 || idx === 0;
 
             return (
               <div
-                key={col.day}
-                onDragEnter={(e) => handleDragEnter(e, col.day)}
-                onDragOver={(e) => handleDragOver(e, col.day)}
+                key={col.dateStr}
+                onDragEnter={(e) => handleDragEnter(e, col.dateStr)}
+                onDragOver={(e) => handleDragOver(e, col.dateStr)}
                 onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, col.day)}
+                onDrop={(e) => handleDropOnDay(e, col)}
                 className={`${hiddenOnMobile ? 'hidden md:flex' : 'flex'} w-full md:w-auto flex-col rounded-2xl md:rounded-none border md:border-0 md:border-r border-[#e0e2ec] dark:border-[#282a2c] last:border-r-0 overflow-hidden md:overflow-visible bg-white dark:bg-[#18191a] md:bg-transparent shadow-sm md:shadow-none transition-colors ${
                   isOver
                     ? 'bg-[#d3e3fd]/25 dark:bg-[#8ab4f8]/10'
@@ -263,33 +363,49 @@ export const CalendarView: React.FC = memo(() => {
                     : ''
                 }`}
               >
-                {/* Day Header */}
+                {/* Google Calendar Style Day Header */}
                 <div
-                  className={`p-3 text-center border-b border-[#e0e2ec] dark:border-[#282a2c] flex items-center justify-center gap-2 ${
+                  className={`py-2.5 px-2 text-center border-b border-[#e0e2ec] dark:border-[#282a2c] flex md:flex-col items-center justify-between md:justify-center gap-1.5 ${
                     col.isToday
-                      ? 'bg-[#d3e3fd]/30 dark:bg-[#8ab4f8]/10'
+                      ? 'bg-[#d3e3fd]/25 dark:bg-[#8ab4f8]/10'
                       : 'bg-[#f8fafd] dark:bg-[#1e1f20]'
                   }`}
                 >
                   <span
-                    className={`text-xs font-semibold tracking-wider ${
+                    className={`text-[11px] font-semibold uppercase tracking-wider ${
                       col.isToday
                         ? 'text-[#0b57d0] dark:text-[#8ab4f8]'
                         : 'text-[#5f6368] dark:text-[#8e918f]'
                     }`}
                   >
-                    {col.label}
+                    {col.day}
                   </span>
-                  {col.isToday && (
-                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[#0b57d0] text-white dark:bg-[#8ab4f8] dark:text-[#131314]">
-                      Today
+
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                        col.isToday
+                          ? 'bg-[#0b57d0] text-white dark:bg-[#8ab4f8] dark:text-[#131314] shadow-sm'
+                          : 'text-[#1f1f1f] dark:text-[#e3e3e3]'
+                      }`}
+                    >
+                      {col.dayNum}
                     </span>
-                  )}
+                    {showMonthTag && (
+                      <span className="text-[10px] font-medium text-[#5f6368] dark:text-[#8e918f] md:hidden">
+                        {col.monthName}
+                      </span>
+                    )}
+                    {col.dayNum === 1 && (
+                      <span className="hidden md:inline text-[10px] font-semibold uppercase text-[#0b57d0] dark:text-[#8ab4f8]">
+                        {col.monthName}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Day Content */}
                 <div className="p-2 flex-1 flex flex-col gap-2">
-                  {/* Tasks for this day */}
                   <div className="flex-1 flex flex-col gap-1.5">
                     <div className="flex items-center justify-between px-1">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5f6368] dark:text-[#8e918f]">
@@ -299,6 +415,7 @@ export const CalendarView: React.FC = memo(() => {
 
                     <QuickAddBar
                       defaultDayOfWeek={col.day}
+                      defaultDueDate={col.dateStr}
                       placeholder="Add task"
                       compact
                     />

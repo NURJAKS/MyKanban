@@ -27,6 +27,7 @@ export interface HomeworkTask {
   title: string;
   details?: string;
   status: TaskStatus;
+  dueDate?: string | null;
   dayOfWeek?: DayOfWeek | null;
   subtasks: SubTask[];
   completed: boolean;
