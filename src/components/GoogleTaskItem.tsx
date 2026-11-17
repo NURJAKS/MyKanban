@@ -28,7 +28,9 @@ export const GoogleTaskItem: React.FC<GoogleTaskItemProps> = memo(({ task }) => 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('text/plain', task.id);
     e.dataTransfer.effectAllowed = 'move';
-    setDraggedTaskId(task.id);
+    requestAnimationFrame(() => {
+      setDraggedTaskId(task.id);
+    });
   };
 
   const handleDragEnd = () => {

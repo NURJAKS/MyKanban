@@ -80,12 +80,23 @@ export const CalendarView: React.FC = memo(() => {
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData('text/plain', taskId);
     e.dataTransfer.effectAllowed = 'move';
-    setDraggedTaskId(taskId);
+    // Defer visual drag state so Chrome captures the drag ghost cleanly without aborting
+    requestAnimationFrame(() => {
+      setDraggedTaskId(taskId);
+    });
   };
 
   const handleDragEnd = () => {
     setDraggedTaskId(null);
     setActiveDropDay(null);
+  };
+
+  const handleDragEnter = (e: React.DragEvent, target: DayOfWeek | 'unscheduled') => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (activeDropDay !== target) {
+      setActiveDropDay(target);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent, target: DayOfWeek | 'unscheduled') => {
@@ -184,9 +195,10 @@ export const CalendarView: React.FC = memo(() => {
 
   return (
     <div className="flex-1 flex flex-col gap-3 pb-6">
-      {/* Unscheduled / Backlog Drop Tray (shown when there are unscheduled tasks or while dragging) */}
-      {(unscheduledTasks.length > 0 || draggedTaskId) && (
+      {/* Unscheduled / Backlog Drop Tray (only shown when unscheduled tasks exist so layout never jumps on dragStart) */}
+      {unscheduledTasks.length > 0 && (
         <div
+          onDragEnter={(e) => handleDragEnter(e, 'unscheduled')}
           onDragOver={(e) => handleDragOver(e, 'unscheduled')}
           onDragLeave={handleDragLeave}
           onDrop={(e) => handleDrop(e, null)}
@@ -201,19 +213,13 @@ export const CalendarView: React.FC = memo(() => {
               Unscheduled ({unscheduledTasks.length}) — drag onto a day below
             </span>
           </div>
-          {unscheduledTasks.length === 0 ? (
-            <div className="text-xs text-[#747775] dark:text-[#5f6368] py-1">
-              Drop here to unschedule from a weekday
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {unscheduledTasks.map((task) => (
-                <div key={task.id} className="w-full sm:w-[220px]">
-                  {renderCalendarTask(task)}
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {unscheduledTasks.map((task) => (
+              <div key={task.id} className="w-full sm:w-[220px]">
+                {renderCalendarTask(task)}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -227,6 +233,7 @@ export const CalendarView: React.FC = memo(() => {
             return (
               <div
                 key={col.day}
+                onDragEnter={(e) => handleDragEnter(e, col.day)}
                 onDragOver={(e) => handleDragOver(e, col.day)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, col.day)}
