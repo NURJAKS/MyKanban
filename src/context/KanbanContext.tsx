@@ -140,6 +140,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Refs for sync coordination without stale closures
   const hasMountedRef = useRef(false);
   const isApplyingRemoteRef = useRef(false);
+  const hasPendingPushRef = useRef(false);
   const pushTimeoutRef = useRef<number | null>(null);
   const lastPullTimestampRef = useRef<number>(0);
   const localUpdatedAtRef = useRef<string>(
@@ -214,14 +215,18 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const syncPull = useCallback(async (force = false) => {
     const cfg = syncConfigRef.current;
     if (!cfg?.token || !cfg?.gistId) return;
+    if (!force && hasPendingPushRef.current) return;
 
     setSyncStatus('syncing');
     setSyncError(null);
     try {
-      const remote = await fetchGistData(cfg.token, cfg.gistId);
+      const { payload: remote, gistVersion } = await fetchGistData(cfg.token, cfg.gistId);
       const localTs = localUpdatedAtRef.current;
+      const versionChanged = cfg.lastSyncedVersion
+        ? gistVersion !== cfg.lastSyncedVersion
+        : !localTs || remote.updatedAt > localTs;
 
-      if (force || !localTs || remote.updatedAt > localTs) {
+      if (force || versionChanged) {
         isApplyingRemoteRef.current = true;
         localUpdatedAtRef.current = remote.updatedAt;
         try {
@@ -232,7 +237,9 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
 
       const nowIso = new Date().toISOString();
-      setSyncConfig((prev) => (prev ? { ...prev, lastSyncedAt: nowIso } : null));
+      setSyncConfig((prev) =>
+        prev ? { ...prev, lastSyncedAt: nowIso, lastSyncedVersion: gistVersion } : null
+      );
       setSyncStatus('synced');
       lastPullTimestampRef.current = Date.now();
     } catch (err) {
@@ -246,6 +253,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const cfg = syncConfigRef.current;
     if (!cfg?.token || !cfg?.gistId) return;
 
+    hasPendingPushRef.current = false;
     setSyncStatus('syncing');
     setSyncError(null);
     try {
@@ -255,15 +263,18 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         localStorage.setItem(STORAGE_KEY_UPDATED, nowIso);
       } catch {}
 
-      await pushGistData(cfg.token, cfg.gistId, {
+      const { gistVersion } = await pushGistData(cfg.token, cfg.gistId, {
         version: 1,
         updatedAt: nowIso,
         subjects: subjectsRef.current,
         tasks: tasksRef.current,
       });
 
-      setSyncConfig((prev) => (prev ? { ...prev, lastSyncedAt: nowIso } : null));
+      setSyncConfig((prev) =>
+        prev ? { ...prev, lastSyncedAt: nowIso, lastSyncedVersion: gistVersion } : null
+      );
       setSyncStatus('synced');
+      lastPullTimestampRef.current = Date.now();
     } catch (err) {
       setSyncStatus('error');
       setSyncError(err instanceof Error ? err.message : 'Failed to push to Gist');
@@ -276,7 +287,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setSyncError(null);
     try {
       const nowIso = new Date().toISOString();
-      const { gistId } = await createSecretGist(token, {
+      const { gistId, gistVersion } = await createSecretGist(token, {
         version: 1,
         updatedAt: nowIso,
         subjects: subjectsRef.current,
@@ -288,8 +299,14 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         localStorage.setItem(STORAGE_KEY_UPDATED, nowIso);
       } catch {}
 
-      setSyncConfig({ token: token.trim(), gistId, lastSyncedAt: nowIso });
+      setSyncConfig({
+        token: token.trim(),
+        gistId,
+        lastSyncedAt: nowIso,
+        lastSyncedVersion: gistVersion,
+      });
       setSyncStatus('synced');
+      lastPullTimestampRef.current = Date.now();
       return gistId;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create Secret Gist';
@@ -304,7 +321,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setSyncStatus('syncing');
     setSyncError(null);
     try {
-      const remote = await fetchGistData(token, gistId);
+      const { payload: remote, gistVersion } = await fetchGistData(token, gistId);
       const cleanId = gistId.trim().replace(/^https:\/\/gist\.github\.com\/[^/]+\//, '');
       const nowIso = new Date().toISOString();
 
@@ -316,7 +333,12 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       setSubjects(remote.subjects);
       setTasks(remote.tasks.map(migrateTask));
-      setSyncConfig({ token: token.trim(), gistId: cleanId, lastSyncedAt: nowIso });
+      setSyncConfig({
+        token: token.trim(),
+        gistId: cleanId,
+        lastSyncedAt: nowIso,
+        lastSyncedVersion: gistVersion,
+      });
       setSyncStatus('synced');
       lastPullTimestampRef.current = Date.now();
     } catch (err) {
@@ -331,12 +353,13 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (pushTimeoutRef.current) {
       window.clearTimeout(pushTimeoutRef.current);
     }
+    hasPendingPushRef.current = false;
     setSyncConfig(null);
     setSyncStatus('idle');
     setSyncError(null);
   }, []);
 
-  // Auto-pull on initial mount & when tab becomes visible/focused
+  // Auto-pull on initial mount, when tab becomes visible/focused, and every 10s while visible
   useEffect(() => {
     if (syncConfigRef.current?.token && syncConfigRef.current?.gistId) {
       syncPull();
@@ -345,15 +368,26 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const handleVisibilityOrFocus = () => {
       if (document.visibilityState === 'visible') {
         const elapsed = Date.now() - lastPullTimestampRef.current;
-        if (elapsed > 5000 && syncConfigRef.current?.token && syncConfigRef.current?.gistId) {
+        if (elapsed > 3000 && syncConfigRef.current?.token && syncConfigRef.current?.gistId) {
           syncPull();
         }
       }
     };
 
+    const pollInterval = window.setInterval(() => {
+      if (
+        document.visibilityState === 'visible' &&
+        syncConfigRef.current?.token &&
+        syncConfigRef.current?.gistId
+      ) {
+        syncPull();
+      }
+    }, 10000);
+
     document.addEventListener('visibilitychange', handleVisibilityOrFocus);
     window.addEventListener('focus', handleVisibilityOrFocus);
     return () => {
+      window.clearInterval(pollInterval);
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       window.removeEventListener('focus', handleVisibilityOrFocus);
     };
@@ -383,6 +417,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch {}
 
     if (syncConfigRef.current?.token && syncConfigRef.current?.gistId) {
+      hasPendingPushRef.current = true;
       if (pushTimeoutRef.current) {
         window.clearTimeout(pushTimeoutRef.current);
       }

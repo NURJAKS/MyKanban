@@ -13,6 +13,7 @@ export interface SyncConfig {
   token: string;
   gistId: string;
   lastSyncedAt?: string;
+  lastSyncedVersion?: string;
 }
 
 const getHeaders = (token: string) => ({
@@ -21,10 +22,14 @@ const getHeaders = (token: string) => ({
   'Content-Type': 'application/json',
 });
 
+const extractGistVersion = (data: { history?: { version?: string }[]; updated_at?: string }): string => {
+  return data.history?.[0]?.version || data.updated_at || '';
+};
+
 export async function createSecretGist(
   token: string,
   payload: SyncPayload
-): Promise<{ gistId: string; updatedAt: string }> {
+): Promise<{ gistId: string; gistVersion: string }> {
   const res = await fetch('https://api.github.com/gists', {
     method: 'POST',
     headers: getHeaders(token),
@@ -45,13 +50,13 @@ export async function createSecretGist(
   }
 
   const data = await res.json();
-  return { gistId: data.id, updatedAt: payload.updatedAt };
+  return { gistId: data.id, gistVersion: extractGistVersion(data) };
 }
 
 export async function fetchGistData(
   token: string,
   gistId: string
-): Promise<SyncPayload> {
+): Promise<{ payload: SyncPayload; gistVersion: string }> {
   const cleanId = gistId.trim().replace(/^https:\/\/gist\.github\.com\/[^/]+\//, '');
   const res = await fetch(`https://api.github.com/gists/${cleanId}`, {
     method: 'GET',
@@ -75,14 +80,14 @@ export async function fetchGistData(
     throw new Error('Invalid MyKanban sync data format.');
   }
 
-  return parsed;
+  return { payload: parsed, gistVersion: extractGistVersion(data) };
 }
 
 export async function pushGistData(
   token: string,
   gistId: string,
   payload: SyncPayload
-): Promise<void> {
+): Promise<{ gistVersion: string }> {
   const cleanId = gistId.trim().replace(/^https:\/\/gist\.github\.com\/[^/]+\//, '');
   const res = await fetch(`https://api.github.com/gists/${cleanId}`, {
     method: 'PATCH',
@@ -100,4 +105,7 @@ export async function pushGistData(
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || `GitHub API error (${res.status})`);
   }
+
+  const data = await res.json();
+  return { gistVersion: extractGistVersion(data) };
 }

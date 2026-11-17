@@ -174,7 +174,7 @@ export const SyncModal: React.FC = memo(() => {
               </div>
 
               <p className="text-[11px] text-[#5f6368] dark:text-[#8e918f] leading-relaxed">
-                Changes auto-push 1.2s after edits and auto-pull whenever you switch back to this tab.
+                Changes auto-push 1.2s after edits and auto-pull every 10s (or when switching back to this tab).
               </p>
 
               {/* Disconnect */}
