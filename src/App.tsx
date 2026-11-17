@@ -5,7 +5,8 @@ import { StatusBoardView } from './components/StatusBoardView';
 import { SubjectListsView } from './components/SubjectListsView';
 import { CalendarView } from './components/CalendarView';
 import { TaskEditDrawer } from './components/TaskEditDrawer';
-import { Command, CheckCircle2 } from 'lucide-react';
+import { SyncModal } from './components/SyncModal';
+import { CheckCircle2 } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
   const { viewMode, hotkeyNotification } = useKanban();
@@ -22,6 +23,9 @@ const MainLayout: React.FC = () => {
 
       {/* Google Tasks style Slide-in Drawer */}
       <TaskEditDrawer />
+
+      {/* Private GitHub Gist Sync Modal */}
+      <SyncModal />
 
       {/* Global Hotkey In-App Toast Notification */}
       {hotkeyNotification && (

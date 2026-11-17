@@ -1,6 +1,5 @@
 import React from 'react';
 import { useKanban } from '../context/KanbanContext';
-import { ViewMode } from '../types';
 import {
   Search,
   RotateCcw,
@@ -12,6 +11,8 @@ import {
   Sun,
   Moon,
   Command,
+  Cloud,
+  RefreshCw,
 } from 'lucide-react';
 
 export const GoogleHeader: React.FC = () => {
@@ -28,6 +29,9 @@ export const GoogleHeader: React.FC = () => {
     setSearchQuery,
     resetDefaults,
     getSubjectColor,
+    syncConfig,
+    syncStatus,
+    setIsSyncModalOpen,
   } = useKanban();
 
   const totalActive = tasks.filter((t) => !t.completed).length;
@@ -121,6 +125,32 @@ export const GoogleHeader: React.FC = () => {
             <Command size={11} />
             <span>Ctrl+Alt+U</span>
           </div>
+
+          {/* Sync Button */}
+          <button
+            onClick={() => setIsSyncModalOpen(true)}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
+              syncStatus === 'error'
+                ? 'bg-[#f9dedc] dark:bg-[#f28b82]/10 text-[#b3261e] dark:text-[#f28b82] border-[#f2b8b5] dark:border-[#f28b82]/30'
+                : syncConfig?.gistId
+                ? 'bg-[#d3e3fd]/50 dark:bg-[#8ab4f8]/10 text-[#0b57d0] dark:text-[#8ab4f8] border-[#a8c7fa]/60 dark:border-[#8ab4f8]/30'
+                : 'text-[#5f6368] dark:text-[#8e918f] hover:text-[#1f1f1f] dark:hover:text-[#e3e3e3] bg-[#f0f4f9] dark:bg-[#1e1f20] border-[#e0e2ec] dark:border-[#282a2c] hover:bg-[#e9eef6] dark:hover:bg-[#282a2c]'
+            }`}
+            title="GitHub Gist Cloud Sync"
+          >
+            {syncStatus === 'syncing' ? (
+              <RefreshCw size={14} className="animate-spin" />
+            ) : (
+              <Cloud size={14} />
+            )}
+            <span className="hidden sm:inline">
+              {syncStatus === 'syncing'
+                ? 'Syncing'
+                : syncConfig?.gistId
+                ? 'Synced'
+                : 'Sync'}
+            </span>
+          </button>
 
           {/* Theme Toggle (Light / Dark) */}
           <button
