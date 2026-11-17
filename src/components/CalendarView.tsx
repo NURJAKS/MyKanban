@@ -65,6 +65,7 @@ export const CalendarView: React.FC = memo(() => {
   } = useKanban();
 
   const [activeDropDay, setActiveDropDay] = useState<DayOfWeek | 'unscheduled' | null>(null);
+  const [mobileSelectedDay, setMobileSelectedDay] = useState<DayOfWeek | 'all'>('all');
   const tasks = getFilteredTasks();
   const todayWeekday = JS_DAY_TO_WEEKDAY[new Date().getDay()];
 
@@ -223,12 +224,47 @@ export const CalendarView: React.FC = memo(() => {
         </div>
       )}
 
-      {/* Weekly 7-Day Grid */}
-      <div className="flex-1 overflow-x-auto snap-x snap-mandatory md:snap-none">
-        <div className="flex md:grid md:grid-cols-7 md:min-w-[1000px] border border-[#e0e2ec] dark:border-[#282a2c] rounded-2xl bg-white dark:bg-[#18191a] overflow-hidden shadow-sm min-h-[520px]">
+      {/* Mobile Weekday Quick-Jump Filter (< md) */}
+      <div className="flex md:hidden items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+        <button
+          onClick={() => setMobileSelectedDay('all')}
+          className={`px-2.5 py-1 rounded-full text-xs font-medium shrink-0 border transition-colors ${
+            mobileSelectedDay === 'all'
+              ? 'bg-[#d3e3fd] text-[#0b57d0] border-[#a8c7fa] dark:bg-[#8ab4f8]/15 dark:text-[#8ab4f8] dark:border-[#8ab4f8]/40'
+              : 'bg-white dark:bg-[#1e1f20] text-[#5f6368] dark:text-[#8e918f] border-[#e0e2ec] dark:border-[#282a2c]'
+          }`}
+        >
+          All Week
+        </button>
+        {dayColumns.map((col) => {
+          const count = tasks.filter((t) => t.dayOfWeek === col.day).length;
+          const isSelected = mobileSelectedDay === col.day;
+          return (
+            <button
+              key={col.day}
+              onClick={() => setMobileSelectedDay(isSelected ? 'all' : col.day)}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium shrink-0 border transition-colors flex items-center gap-1 ${
+                isSelected
+                  ? 'bg-[#0b57d0] text-white border-[#0b57d0] dark:bg-[#8ab4f8] dark:text-[#131314] dark:border-[#8ab4f8]'
+                  : col.isToday
+                  ? 'bg-[#d3e3fd]/40 dark:bg-[#8ab4f8]/10 text-[#0b57d0] dark:text-[#8ab4f8] border-[#a8c7fa]/60 dark:border-[#8ab4f8]/30'
+                  : 'bg-white dark:bg-[#1e1f20] text-[#5f6368] dark:text-[#8e918f] border-[#e0e2ec] dark:border-[#282a2c]'
+              }`}
+            >
+              <span>{col.day}</span>
+              {count > 0 && <span className="text-[10px] font-mono opacity-80">({count})</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Weekly 7-Day Grid (stacked vertically on mobile, 7-column grid on desktop) */}
+      <div className="flex-1 md:overflow-x-auto">
+        <div className="flex flex-col gap-3 md:gap-0 md:grid md:grid-cols-7 md:min-w-[1000px] md:border md:border-[#e0e2ec] md:dark:border-[#282a2c] md:rounded-2xl md:bg-white md:dark:bg-[#18191a] md:overflow-hidden md:shadow-sm md:min-h-[520px]">
           {dayColumns.map((col) => {
             const dayTasks = tasks.filter((t) => t.dayOfWeek === col.day);
             const isOver = activeDropDay === col.day;
+            const hiddenOnMobile = mobileSelectedDay !== 'all' && mobileSelectedDay !== col.day;
 
             return (
               <div
@@ -237,7 +273,7 @@ export const CalendarView: React.FC = memo(() => {
                 onDragOver={(e) => handleDragOver(e, col.day)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, col.day)}
-                className={`snap-center shrink-0 w-[82vw] sm:w-[230px] md:w-auto flex flex-col border-r border-[#e0e2ec] dark:border-[#282a2c] last:border-r-0 transition-colors ${
+                className={`${hiddenOnMobile ? 'hidden md:flex' : 'flex'} w-full md:w-auto flex-col rounded-2xl md:rounded-none border md:border-0 md:border-r border-[#e0e2ec] dark:border-[#282a2c] last:border-r-0 overflow-hidden md:overflow-visible bg-white dark:bg-[#18191a] md:bg-transparent shadow-sm md:shadow-none transition-colors ${
                   isOver
                     ? 'bg-[#d3e3fd]/25 dark:bg-[#8ab4f8]/10'
                     : col.isToday
