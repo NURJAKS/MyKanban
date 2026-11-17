@@ -8,7 +8,6 @@ interface DayColumnDef {
   day: DayOfWeek;
   label: string;
   isToday: boolean;
-  classes: { subjectId: string; type: string; room: string }[];
 }
 
 const JS_DAY_TO_WEEKDAY: DayOfWeek[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -22,35 +21,6 @@ const WEEK_DAYS: { day: DayOfWeek; label: string }[] = [
   { day: 'Sat', label: 'SAT' },
   { day: 'Sun', label: 'SUN' },
 ];
-
-const TIMETABLE_BY_DAY: Record<DayOfWeek, { subjectId: string; type: string; room: string }[]> = {
-  Mon: [
-    { subjectId: 'subj-1', type: 'Lecture', room: 'Aud. 104' },
-    { subjectId: 'subj-3', type: 'Lecture', room: 'Room 208' },
-    { subjectId: 'subj-7', type: 'Lab', room: 'Lab 102' },
-  ],
-  Tue: [
-    { subjectId: 'subj-2', type: 'Lecture', room: 'Lab 310' },
-    { subjectId: 'subj-4', type: 'Lecture', room: 'Lab 204' },
-  ],
-  Wed: [
-    { subjectId: 'subj-1', type: 'Seminar', room: 'Aud. 104' },
-    { subjectId: 'subj-5', type: 'Lecture', room: 'Studio 501' },
-    { subjectId: 'subj-6', type: 'Lecture', room: 'Sec Lab 4B' },
-  ],
-  Thu: [
-    { subjectId: 'subj-2', type: 'Lab', room: 'Lab 310' },
-    { subjectId: 'subj-4', type: 'Practice', room: 'Lab 204' },
-    { subjectId: 'subj-7', type: 'Practice', room: 'Lab 102' },
-  ],
-  Fri: [
-    { subjectId: 'subj-5', type: 'Lab', room: 'Studio 501' },
-    { subjectId: 'subj-3', type: 'Practice', room: 'Room 208' },
-    { subjectId: 'subj-6', type: 'Lab', room: 'Sec Lab 4B' },
-  ],
-  Sat: [],
-  Sun: [],
-};
 
 export const CalendarView: React.FC = memo(() => {
   const {
@@ -74,7 +44,6 @@ export const CalendarView: React.FC = memo(() => {
     day: d.day,
     label: d.label,
     isToday: d.day === todayWeekday,
-    classes: TIMETABLE_BY_DAY[d.day],
   }));
 
   const unscheduledTasks = tasks.filter((t) => !t.dayOfWeek);
@@ -319,50 +288,9 @@ export const CalendarView: React.FC = memo(() => {
                 </div>
 
                 {/* Day Content */}
-                <div className="p-2 flex-1 flex flex-col gap-2.5">
-                  {/* Academic Classes */}
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#747775] dark:text-[#5f6368] block px-1">
-                      Classes
-                    </span>
-                    {col.classes.length === 0 ? (
-                      <span className="text-[11px] text-[#c4c7c5] dark:text-[#3c4043] px-1 block italic">
-                        None
-                      </span>
-                    ) : (
-                      col.classes.map((c, idx) => {
-                        const subject = getSubjectById(c.subjectId);
-                        const color = getSubjectColor(subject);
-
-                        return (
-                          <div
-                            key={idx}
-                            className="p-1.5 rounded-lg border text-xs"
-                            style={{
-                              backgroundColor: `${color}15`,
-                              borderColor: `${color}35`,
-                            }}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className="w-2 h-2 rounded-full shrink-0"
-                                style={{ backgroundColor: color }}
-                              />
-                              <span className="font-semibold text-[#1f1f1f] dark:text-[#e3e3e3] truncate text-[11px]">
-                                {subject?.name}
-                              </span>
-                            </div>
-                            <div className="text-[10px] text-[#5f6368] dark:text-[#8e918f] mt-0.5 truncate">
-                              {c.type} · {c.room}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-
+                <div className="p-2 flex-1 flex flex-col gap-2">
                   {/* Tasks for this day */}
-                  <div className="flex-1 flex flex-col gap-1.5 pt-2 border-t border-[#e0e2ec] dark:border-[#282a2c]/60">
+                  <div className="flex-1 flex flex-col gap-1.5">
                     <div className="flex items-center justify-between px-1">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5f6368] dark:text-[#8e918f]">
                         Tasks ({dayTasks.length})
