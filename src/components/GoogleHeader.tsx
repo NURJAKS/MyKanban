@@ -2,7 +2,6 @@ import React from 'react';
 import { useKanban } from '../context/KanbanContext';
 import {
   Search,
-  RotateCcw,
   CheckCircle2,
   Columns3,
   ListFilter,
@@ -27,7 +26,6 @@ export const GoogleHeader: React.FC = () => {
     setSelectedSubjectId,
     searchQuery,
     setSearchQuery,
-    resetDefaults,
     getSubjectColor,
     syncConfig,
     syncStatus,
@@ -159,19 +157,6 @@ export const GoogleHeader: React.FC = () => {
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} theme`}
           >
             {theme === 'dark' ? <Sun size={15} className="text-[#fdd663]" /> : <Moon size={15} className="text-[#0b57d0]" />}
-          </button>
-
-          {/* Reset */}
-          <button
-            onClick={() => {
-              if (window.confirm('Reset homework data to default sample tasks?')) {
-                resetDefaults();
-              }
-            }}
-            className="p-2 rounded-xl text-[#5f6368] dark:text-[#8e918f] hover:text-[#1f1f1f] dark:hover:text-[#e3e3e3] bg-[#f0f4f9] dark:bg-[#1e1f20] border border-[#e0e2ec] dark:border-[#282a2c] hover:bg-[#e9eef6] dark:hover:bg-[#282a2c] transition-colors"
-            title="Reset to default data"
-          >
-            <RotateCcw size={14} />
           </button>
         </div>
       </div>
