@@ -117,6 +117,17 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch {}
   }, [theme]);
 
+  // Clear drag state globally on any dragend/drop (handles unmounted source elements)
+  useEffect(() => {
+    const clearDrag = () => setDraggedTaskId(null);
+    window.addEventListener('dragend', clearDrag);
+    window.addEventListener('drop', clearDrag);
+    return () => {
+      window.removeEventListener('dragend', clearDrag);
+      window.removeEventListener('drop', clearDrag);
+    };
+  }, []);
+
   // Handle in-app Ctrl+Alt+U
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -221,6 +232,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const moveTaskToStatus = useCallback((taskId: string, newStatus: TaskStatus) => {
+    setDraggedTaskId(null);
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
@@ -237,12 +249,14 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const moveTaskToSubject = useCallback((taskId: string, newSubjectId: string) => {
+    setDraggedTaskId(null);
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, subjectId: newSubjectId } : t))
     );
   }, []);
 
   const moveTaskToDay = useCallback((taskId: string, dayOfWeek: DayOfWeek | null) => {
+    setDraggedTaskId(null);
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, dayOfWeek } : t))
     );
