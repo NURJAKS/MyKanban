@@ -7,6 +7,7 @@ import { CalendarView } from './components/CalendarView';
 import { NotesView } from './components/NotesView';
 import { TaskEditDrawer } from './components/TaskEditDrawer';
 import { DuplicateTaskModal } from './components/DuplicateTaskModal';
+import { ImageLightboxModal } from './components/ImageLightboxModal';
 import { SyncModal } from './components/SyncModal';
 import { CheckCircle2 } from 'lucide-react';
 
@@ -29,6 +30,9 @@ const MainLayout: React.FC = () => {
 
       {/* Duplicate Task to Lessons Modal */}
       <DuplicateTaskModal />
+
+      {/* Fullscreen Task Image Lightbox */}
+      <ImageLightboxModal />
 
       {/* Private GitHub Gist Sync Modal */}
       <SyncModal />

@@ -10,6 +10,13 @@ export interface SubTask {
   completed: boolean;
 }
 
+export interface TaskImage {
+  id: string;
+  name: string;
+  dataUrl: string;
+  addedAt: string;
+}
+
 export interface Subject {
   id: string;
   name: string;
@@ -30,6 +37,7 @@ export interface HomeworkTask {
   dueDate?: string | null;
   dayOfWeek?: DayOfWeek | null;
   subtasks: SubTask[];
+  images?: TaskImage[];
   completed: boolean;
   completedAt?: string;
   createdAt: string;

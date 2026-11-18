@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { Subject, HomeworkTask, TaskStatus, ViewMode, Theme, DayOfWeek, UniversityNote } from '../types';
+import { Subject, HomeworkTask, TaskStatus, ViewMode, Theme, DayOfWeek, UniversityNote, TaskImage } from '../types';
 import { INITIAL_SUBJECTS, INITIAL_TASKS, INITIAL_NOTES } from '../data/initialData';
 import {
   SyncConfig,
@@ -39,6 +39,7 @@ interface KanbanContextType {
   editingTaskId: string | null;
   duplicatingTaskId: string | null;
   draggedTaskId: string | null;
+  previewImages: { images: TaskImage[]; index: number } | null;
   hotkeyNotification: boolean;
   toastMessage: string | null;
 
@@ -61,6 +62,7 @@ interface KanbanContextType {
   setEditingTaskId: (id: string | null) => void;
   setDuplicatingTaskId: (id: string | null) => void;
   setDraggedTaskId: (id: string | null) => void;
+  setPreviewImages: (preview: { images: TaskImage[]; index: number } | null) => void;
   showToast: (msg: string) => void;
 
   addTask: (data: {
@@ -86,6 +88,8 @@ interface KanbanContextType {
   toggleSubtask: (taskId: string, subtaskId: string) => void;
   addSubtask: (taskId: string, title: string) => void;
   deleteSubtask: (taskId: string, subtaskId: string) => void;
+  addTaskImages: (taskId: string, images: TaskImage[]) => void;
+  deleteTaskImage: (taskId: string, imageId: string) => void;
   updateSubject: (subjectId: string, partial: Partial<Subject>) => void;
   addNote: (title?: string) => string;
   updateNote: (noteId: string, partial: Partial<Pick<UniversityNote, 'title' | 'content' | 'pinned'>>) => void;
@@ -171,6 +175,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [duplicatingTaskId, setDuplicatingTaskId] = useState<string | null>(null);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [previewImages, setPreviewImages] = useState<{ images: TaskImage[]; index: number } | null>(null);
   const [hotkeyNotification, setHotkeyNotification] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -567,6 +572,10 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           title: st.title,
           completed: resetStatus ? false : st.completed,
         })),
+        images: (source.images || []).map((img, imgIdx) => ({
+          ...img,
+          id: `img-${baseTs}-${idx}-${imgIdx}-${Math.random().toString(36).substring(2, 5)}`,
+        })),
       }));
 
       setTasks((prev) => [...clones, ...prev]);
@@ -707,6 +716,31 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     );
   }, []);
 
+  const addTaskImages = useCallback((taskId: string, newImages: TaskImage[]) => {
+    if (newImages.length === 0) return;
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id !== taskId) return t;
+        return {
+          ...t,
+          images: [...(t.images || []), ...newImages],
+        };
+      })
+    );
+  }, []);
+
+  const deleteTaskImage = useCallback((taskId: string, imageId: string) => {
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id !== taskId) return t;
+        return {
+          ...t,
+          images: (t.images || []).filter((img) => img.id !== imageId),
+        };
+      })
+    );
+  }, []);
+
   const updateSubject = useCallback((subjectId: string, partial: Partial<Subject>) => {
     setSubjects((prev) =>
       prev.map((s) => (s.id === subjectId ? { ...s, ...partial } : s))
@@ -780,6 +814,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         editingTaskId,
         duplicatingTaskId,
         draggedTaskId,
+        previewImages,
         hotkeyNotification,
         toastMessage,
         syncConfig,
@@ -799,6 +834,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setEditingTaskId,
         setDuplicatingTaskId,
         setDraggedTaskId,
+        setPreviewImages,
         showToast,
         addTask,
         duplicateTaskToSubjects,
@@ -812,6 +848,8 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         toggleSubtask,
         addSubtask,
         deleteSubtask,
+        addTaskImages,
+        deleteTaskImage,
         updateSubject,
         addNote,
         updateNote,

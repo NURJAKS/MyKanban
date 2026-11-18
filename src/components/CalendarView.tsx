@@ -2,7 +2,7 @@ import React, { useState, useRef, memo } from 'react';
 import { useKanban } from '../context/KanbanContext';
 import { DayOfWeek, HomeworkTask } from '../types';
 import { QuickAddBar } from './QuickAddBar';
-import { Check, GripVertical, Copy, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { Check, GripVertical, Copy, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Image as ImageIcon } from 'lucide-react';
 import {
   getMondayOfWeek,
   getWeekDays,
@@ -176,18 +176,26 @@ export const CalendarView: React.FC = memo(() => {
           >
             {task.title}
           </span>
-          {subject && (
-            <span
-              className="inline-flex items-center gap-1 text-[10px] font-medium mt-1"
-              style={{ color }}
-            >
+          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+            {subject && (
               <span
-                className="w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ backgroundColor: color }}
-              />
-              {subject.name}
-            </span>
-          )}
+                className="inline-flex items-center gap-1 text-[10px] font-medium"
+                style={{ color }}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: color }}
+                />
+                {subject.name}
+              </span>
+            )}
+            {task.images && task.images.length > 0 && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-mono text-[#5f6368] dark:text-[#8e918f]">
+                <ImageIcon size={10} />
+                {task.images.length}
+              </span>
+            )}
+          </div>
         </div>
 
         <button

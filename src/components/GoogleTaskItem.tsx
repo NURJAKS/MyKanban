@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { HomeworkTask } from '../types';
 import { useKanban } from '../context/KanbanContext';
-import { Check, GripVertical, ListTodo, ChevronRight, Copy } from 'lucide-react';
+import { Check, GripVertical, ListTodo, ChevronRight, Copy, Image as ImageIcon } from 'lucide-react';
 import { formatTaskDateBadge } from '../utils/dateUtils';
 
 interface GoogleTaskItemProps {
@@ -17,6 +17,7 @@ export const GoogleTaskItem: React.FC<GoogleTaskItemProps> = memo(({ task }) => 
     setEditingTaskId,
     setDuplicatingTaskId,
     setDraggedTaskId,
+    setPreviewImages,
     draggedTaskId,
   } = useKanban();
 
@@ -99,6 +100,38 @@ export const GoogleTaskItem: React.FC<GoogleTaskItemProps> = memo(({ task }) => 
           </p>
         )}
 
+        {/* Attached Image Thumbnails */}
+        {task.images && task.images.length > 0 && (
+          <div className="flex items-center gap-1.5 mt-2">
+            {task.images.slice(0, 3).map((img, idx) => (
+              <button
+                key={img.id}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPreviewImages({ images: task.images || [], index: idx });
+                }}
+                className="relative w-10 h-10 rounded-lg overflow-hidden border border-[#e0e2ec] dark:border-[#3c4043] hover:ring-2 hover:ring-[#0b57d0] dark:hover:ring-[#8ab4f8] transition-all shrink-0"
+                title={`Preview ${img.name}`}
+              >
+                <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover" />
+              </button>
+            ))}
+            {task.images.length > 3 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPreviewImages({ images: task.images || [], index: 3 });
+                }}
+                className="w-10 h-10 rounded-lg border border-[#e0e2ec] dark:border-[#3c4043] bg-[#f0f4f9] dark:bg-[#282a2c] text-[11px] font-mono font-semibold text-[#5f6368] dark:text-[#c4c7c5] flex items-center justify-center hover:bg-[#e9eef6] dark:hover:bg-[#333538]"
+              >
+                +{task.images.length - 3}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Chips row: Subject, Weekday, Subtasks */}
         <div className="flex flex-wrap items-center gap-1.5 mt-2">
           {/* Subject chip */}
@@ -134,6 +167,14 @@ export const GoogleTaskItem: React.FC<GoogleTaskItemProps> = memo(({ task }) => 
               <span>
                 {completedSubtasks}/{totalSubtasks}
               </span>
+            </span>
+          )}
+
+          {/* Image count chip */}
+          {task.images && task.images.length > 0 && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] bg-[#f0f4f9] dark:bg-[#282a2c] text-[#5f6368] dark:text-[#9aa0a6] border border-[#e0e2ec] dark:border-[#3c4043]/50 font-mono">
+              <ImageIcon size={11} />
+              <span>{task.images.length}</span>
             </span>
           )}
         </div>
