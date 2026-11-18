@@ -50,5 +50,6 @@ export interface UniversityNote {
   title: string;
   content: string;
   pinned?: boolean;
+  images?: TaskImage[];
   updatedAt: string;
 }

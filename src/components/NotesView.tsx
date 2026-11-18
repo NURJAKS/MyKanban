@@ -9,10 +9,25 @@ import {
   FileText,
   ListChecks,
   BookOpen,
+  Image as ImageIcon,
 } from 'lucide-react';
+import {
+  ImageAttachmentSection,
+  processImageFiles,
+  extractClipboardImages,
+} from './ImageAttachmentSection';
 
 export const NotesView: React.FC = memo(() => {
-  const { notes, addNote, updateNote, deleteNote, searchQuery, showToast } = useKanban();
+  const {
+    notes,
+    addNote,
+    updateNote,
+    deleteNote,
+    addNoteImages,
+    deleteNoteImage,
+    searchQuery,
+    showToast,
+  } = useKanban();
 
   const sortedNotes = [...notes].sort((a, b) => {
     if (Boolean(a.pinned) !== Boolean(b.pinned)) {
@@ -168,9 +183,17 @@ export const NotesView: React.FC = memo(() => {
                       />
                     )}
                   </div>
-                  <p className="text-[11px] text-[#5f6368] dark:text-[#8e918f] truncate mt-1">
-                    {note.content.trim() || 'Empty note — click to write rules...'}
-                  </p>
+                  <div className="flex items-center justify-between gap-1.5 mt-1">
+                    <p className="text-[11px] text-[#5f6368] dark:text-[#8e918f] truncate">
+                      {note.content.trim() || 'Empty note — click to write rules...'}
+                    </p>
+                    {note.images && note.images.length > 0 && (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-mono text-[#5f6368] dark:text-[#8e918f] shrink-0">
+                        <ImageIcon size={10} />
+                        {note.images.length}
+                      </span>
+                    )}
+                  </div>
                 </button>
               );
             })
@@ -180,7 +203,20 @@ export const NotesView: React.FC = memo(() => {
 
       {/* Main Note Editor */}
       {activeNote && (
-        <section className="flex-1 bg-white dark:bg-[#18191a] border border-[#e0e2ec] dark:border-[#282a2c] rounded-2xl flex flex-col shadow-sm dark:shadow-none overflow-hidden min-h-[420px] md:max-h-[calc(100vh-170px)]">
+        <section
+          onPaste={(e) => {
+            const pastedFiles = extractClipboardImages(e);
+            if (pastedFiles.length > 0) {
+              e.preventDefault();
+              processImageFiles(
+                pastedFiles,
+                (imgs) => addNoteImages(activeNote.id, imgs),
+                showToast
+              );
+            }
+          }}
+          className="flex-1 bg-white dark:bg-[#18191a] border border-[#e0e2ec] dark:border-[#282a2c] rounded-2xl flex flex-col shadow-sm dark:shadow-none overflow-hidden min-h-[420px] md:max-h-[calc(100vh-170px)]"
+        >
           {/* Editor Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-[#e0e2ec] dark:border-[#282a2c] bg-[#f8fafd] dark:bg-[#1e1f20]">
             <div className="flex items-center gap-1.5">
@@ -256,14 +292,14 @@ export const NotesView: React.FC = memo(() => {
             </div>
           </div>
 
-          {/* Note Title & Body */}
-          <div className="flex-1 flex flex-col p-5 overflow-hidden">
+          {/* Note Title, Body & Images */}
+          <div className="flex-1 flex flex-col p-5 overflow-y-auto custom-scrollbar gap-4">
             <input
               type="text"
               value={activeNote.title}
               onChange={(e) => updateNote(activeNote.id, { title: e.target.value })}
               placeholder="Note title (e.g., General University Rules)"
-              className="w-full bg-transparent text-lg sm:text-xl font-semibold text-[#1f1f1f] dark:text-[#e3e3e3] placeholder-[#747775] dark:placeholder-[#5f6368] focus:outline-none pb-3 border-b border-[#f0f4f9] dark:border-[#282a2c]"
+              className="w-full bg-transparent text-lg sm:text-xl font-semibold text-[#1f1f1f] dark:text-[#e3e3e3] placeholder-[#747775] dark:placeholder-[#5f6368] focus:outline-none pb-3 border-b border-[#f0f4f9] dark:border-[#282a2c] shrink-0"
             />
 
             <textarea
@@ -271,8 +307,17 @@ export const NotesView: React.FC = memo(() => {
               value={activeNote.content}
               onChange={(e) => updateNote(activeNote.id, { content: e.target.value })}
               placeholder={`Write your general university rules here...\n\nExamples:\n• Attendance policy & max allowed absences\n• Grading scale, GPA thresholds & retake rules\n• Assignment submission & late penalty policy\n• Exam regulations, lab rules & campus contacts`}
-              className="flex-1 w-full bg-transparent pt-4 text-sm text-[#1f1f1f] dark:text-[#e3e3e3] placeholder-[#747775] dark:placeholder-[#5f6368] focus:outline-none resize-none leading-relaxed custom-scrollbar"
+              className="flex-1 min-h-[220px] w-full bg-transparent text-sm text-[#1f1f1f] dark:text-[#e3e3e3] placeholder-[#747775] dark:placeholder-[#5f6368] focus:outline-none resize-none leading-relaxed custom-scrollbar"
             />
+
+            <div className="pt-3 border-t border-[#f0f4f9] dark:border-[#282a2c] shrink-0">
+              <ImageAttachmentSection
+                images={activeNote.images || []}
+                onAddImages={(imgs) => addNoteImages(activeNote.id, imgs)}
+                onDeleteImage={(imgId) => deleteNoteImage(activeNote.id, imgId)}
+                gridClassName="grid-cols-2 sm:grid-cols-4 md:grid-cols-5"
+              />
+            </div>
           </div>
 
           {/* Editor Footer */}

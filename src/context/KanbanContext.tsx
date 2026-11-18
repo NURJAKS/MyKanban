@@ -92,8 +92,10 @@ interface KanbanContextType {
   deleteTaskImage: (taskId: string, imageId: string) => void;
   updateSubject: (subjectId: string, partial: Partial<Subject>) => void;
   addNote: (title?: string) => string;
-  updateNote: (noteId: string, partial: Partial<Pick<UniversityNote, 'title' | 'content' | 'pinned'>>) => void;
+  updateNote: (noteId: string, partial: Partial<Pick<UniversityNote, 'title' | 'content' | 'pinned' | 'images'>>) => void;
   deleteNote: (noteId: string) => void;
+  addNoteImages: (noteId: string, images: TaskImage[]) => void;
+  deleteNoteImage: (noteId: string, imageId: string) => void;
   resetDefaults: () => void;
 
   getSubjectById: (id: string) => Subject | undefined;
@@ -778,7 +780,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const updateNote = useCallback(
-    (noteId: string, partial: Partial<Pick<UniversityNote, 'title' | 'content' | 'pinned'>>) => {
+    (noteId: string, partial: Partial<Pick<UniversityNote, 'title' | 'content' | 'pinned' | 'images'>>) => {
       const nowIso = new Date().toISOString();
       setNotes((prev) =>
         prev.map((n) => (n.id === noteId ? { ...n, ...partial, updatedAt: nowIso } : n))
@@ -792,6 +794,33 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const remaining = prev.filter((n) => n.id !== noteId);
       return remaining.length > 0 ? remaining : INITIAL_NOTES;
     });
+  }, []);
+
+  const addNoteImages = useCallback((noteId: string, newImages: TaskImage[]) => {
+    if (newImages.length === 0) return;
+    const nowIso = new Date().toISOString();
+    setNotes((prev) =>
+      prev.map((n) =>
+        n.id === noteId
+          ? { ...n, images: [...(n.images || []), ...newImages], updatedAt: nowIso }
+          : n
+      )
+    );
+  }, []);
+
+  const deleteNoteImage = useCallback((noteId: string, imageId: string) => {
+    const nowIso = new Date().toISOString();
+    setNotes((prev) =>
+      prev.map((n) =>
+        n.id === noteId
+          ? {
+              ...n,
+              images: (n.images || []).filter((img) => img.id !== imageId),
+              updatedAt: nowIso,
+            }
+          : n
+      )
+    );
   }, []);
 
   const resetDefaults = useCallback(() => {
@@ -871,6 +900,8 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         addNote,
         updateNote,
         deleteNote,
+        addNoteImages,
+        deleteNoteImage,
         resetDefaults,
         getSubjectById,
         getSubjectColor,
