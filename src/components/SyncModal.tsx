@@ -9,7 +9,6 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  Upload,
   Download,
   Unlink,
 } from 'lucide-react';
@@ -23,8 +22,6 @@ export const SyncModal: React.FC = memo(() => {
     syncError,
     connectAndCreateGist,
     connectAndPullGist,
-    syncPull,
-    syncPush,
     disconnectSync,
   } = useKanban();
 
@@ -150,31 +147,8 @@ export const SyncModal: React.FC = memo(() => {
                 </div>
               </div>
 
-              {/* Manual Sync Controls */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  disabled={syncStatus === 'syncing'}
-                  onClick={() => syncPull(true)}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-[#f0f4f9] dark:bg-[#282a2c] hover:bg-[#e9eef6] dark:hover:bg-[#333538] text-[#1f1f1f] dark:text-[#e3e3e3] border border-[#e0e2ec] dark:border-[#3c4043] transition-colors disabled:opacity-50"
-                >
-                  <Download size={14} />
-                  <span>Pull from Cloud</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={syncStatus === 'syncing'}
-                  onClick={() => syncPush()}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-[#0b57d0] dark:bg-[#8ab4f8] text-white dark:text-[#131314] hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  <Upload size={14} />
-                  <span>Push to Cloud</span>
-                </button>
-              </div>
-
               <p className="text-[11px] text-[#5f6368] dark:text-[#8e918f] leading-relaxed">
-                Changes auto-push 1.2s after edits and auto-pull every 10s (or when switching back to this tab).
+                Auto-sync active: changes push 1.2s after edits and pull automatically every 10s, on tab/app resume, and on reconnect.
               </p>
 
               {/* Disconnect */}

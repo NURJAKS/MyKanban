@@ -14,6 +14,10 @@ import {
   Cloud,
   RefreshCw,
   Smartphone,
+  Share,
+  PlusSquare,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -40,13 +44,31 @@ export const GoogleHeader: React.FC = () => {
   } = useKanban();
 
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isIosInstallable, setIsIosInstallable] = useState(false);
+  const [showIosGuide, setShowIosGuide] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
   useEffect(() => {
+    const ua = window.navigator.userAgent;
+    const isIos =
+      /iPad|iPhone|iPod/.test(ua) ||
+      (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
+    const isStandalone =
+      Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone) ||
+      window.matchMedia('(display-mode: standalone)').matches;
+
+    if (isIos && !isStandalone) {
+      setIsIosInstallable(true);
+    }
+
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setInstallPrompt(e as BeforeInstallPromptEvent);
     };
-    const handleInstalled = () => setInstallPrompt(null);
+    const handleInstalled = () => {
+      setInstallPrompt(null);
+      setIsIosInstallable(false);
+    };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     window.addEventListener('appinstalled', handleInstalled);
@@ -57,19 +79,33 @@ export const GoogleHeader: React.FC = () => {
   }, []);
 
   const handleInstallClick = async () => {
-    if (!installPrompt) return;
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
-    if (choice.outcome === 'accepted') {
-      setInstallPrompt(null);
+    if (installPrompt) {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        setInstallPrompt(null);
+      }
+      return;
     }
+    if (isIosInstallable) {
+      setShowIosGuide(true);
+    }
+  };
+
+  const handleCopyAppUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 1800);
+    } catch {}
   };
 
   const totalActive = tasks.filter((t) => !t.completed).length;
   const totalCompleted = tasks.filter((t) => t.completed).length;
 
   return (
-    <header className="border-b border-[#e0e2ec] dark:border-[#282a2c] bg-white dark:bg-[#131314] sticky top-0 z-30 transition-colors">
+    <>
+    <header className="border-b border-[#e0e2ec] dark:border-[#282a2c] bg-white dark:bg-[#131314] sticky top-0 z-30 pt-[env(safe-area-inset-top)] transition-colors">
       {/* Top Navbar */}
       <div className="max-w-7xl mx-auto px-4 lg:px-6 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Brand & Title */}
@@ -169,8 +205,8 @@ export const GoogleHeader: React.FC = () => {
             <span>Ctrl+Alt+U</span>
           </div>
 
-          {/* Install App Button (shown when browser supports native PWA install) */}
-          {installPrompt && (
+          {/* Install App Button (native prompt on Android/Desktop, Safari guide on iOS) */}
+          {(installPrompt || isIosInstallable) && (
             <button
               type="button"
               onClick={handleInstallClick}
@@ -276,5 +312,87 @@ export const GoogleHeader: React.FC = () => {
         </div>
       )}
     </header>
+
+    {/* iOS Safari Install Guide Modal */}
+    {showIosGuide && (
+      <div
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-[2px]"
+        onClick={() => setShowIosGuide(false)}
+      >
+        <div
+          className="w-full max-w-sm bg-white dark:bg-[#1e1f20] border border-[#e0e2ec] dark:border-[#3c4043] rounded-2xl shadow-2xl p-5 space-y-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#d3e3fd]/60 dark:bg-[#8ab4f8]/15 text-[#0b57d0] dark:text-[#8ab4f8] flex items-center justify-center">
+                <Smartphone size={17} />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-[#1f1f1f] dark:text-[#e3e3e3]">
+                  Install on iPhone / iPad
+                </h3>
+                <p className="text-[11px] text-[#5f6368] dark:text-[#8e918f]">
+                  Add MyKanban to your Home Screen
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowIosGuide(false)}
+              className="p-1.5 rounded-lg text-[#5f6368] dark:text-[#8e918f] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c]"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <ol className="space-y-2.5 text-xs text-[#1f1f1f] dark:text-[#e3e3e3]">
+            <li className="flex items-start gap-2.5 p-2.5 rounded-xl bg-[#f0f4f9] dark:bg-[#282a2c]">
+              <span className="w-5 h-5 rounded-full bg-[#0b57d0] dark:bg-[#8ab4f8] text-white dark:text-[#131314] text-[11px] font-bold flex items-center justify-center shrink-0">
+                1
+              </span>
+              <span>
+                Open this page in <strong>Safari</strong> (if you opened it inside Telegram or Chrome, copy the link below into Safari).
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5 p-2.5 rounded-xl bg-[#f0f4f9] dark:bg-[#282a2c]">
+              <span className="w-5 h-5 rounded-full bg-[#0b57d0] dark:bg-[#8ab4f8] text-white dark:text-[#131314] text-[11px] font-bold flex items-center justify-center shrink-0">
+                2
+              </span>
+              <span className="flex items-center gap-1 flex-wrap">
+                Tap the <Share size={13} className="inline text-[#0b57d0] dark:text-[#8ab4f8]" /> <strong>Share</strong> button at the bottom of Safari.
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5 p-2.5 rounded-xl bg-[#f0f4f9] dark:bg-[#282a2c]">
+              <span className="w-5 h-5 rounded-full bg-[#0b57d0] dark:bg-[#8ab4f8] text-white dark:text-[#131314] text-[11px] font-bold flex items-center justify-center shrink-0">
+                3
+              </span>
+              <span className="flex items-center gap-1 flex-wrap">
+                Tap <PlusSquare size={13} className="inline text-[#0b57d0] dark:text-[#8ab4f8]" /> <strong>Add to Home Screen</strong>, then tap <strong>Add</strong>.
+              </span>
+            </li>
+          </ol>
+
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleCopyAppUrl}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-[#f0f4f9] dark:bg-[#282a2c] text-[#1f1f1f] dark:text-[#e3e3e3] border border-[#e0e2ec] dark:border-[#3c4043]"
+            >
+              {copiedUrl ? <Check size={13} className="text-[#137333] dark:text-[#81c995]" /> : <Copy size={13} />}
+              <span>{copiedUrl ? 'Link Copied' : 'Copy Link for Safari'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowIosGuide(false)}
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#0b57d0] dark:bg-[#8ab4f8] text-white dark:text-[#131314]"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
