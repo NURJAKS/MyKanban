@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useKanban } from '../context/KanbanContext';
 import {
   Search,
@@ -13,7 +13,13 @@ import {
   Command,
   Cloud,
   RefreshCw,
+  Smartphone,
 } from 'lucide-react';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
 export const GoogleHeader: React.FC = () => {
   const {
@@ -32,6 +38,32 @@ export const GoogleHeader: React.FC = () => {
     syncStatus,
     setIsSyncModalOpen,
   } = useKanban();
+
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+    const handleInstalled = () => setInstallPrompt(null);
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    if (choice.outcome === 'accepted') {
+      setInstallPrompt(null);
+    }
+  };
 
   const totalActive = tasks.filter((t) => !t.completed).length;
   const totalCompleted = tasks.filter((t) => t.completed).length;
@@ -136,6 +168,19 @@ export const GoogleHeader: React.FC = () => {
             <Command size={11} />
             <span>Ctrl+Alt+U</span>
           </div>
+
+          {/* Install App Button (shown when browser supports native PWA install) */}
+          {installPrompt && (
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-[#0b57d0] dark:bg-[#8ab4f8] text-white dark:text-[#131314] hover:opacity-90 transition-opacity shrink-0"
+              title="Install MyKanban as an app on your device"
+            >
+              <Smartphone size={14} />
+              <span className="hidden sm:inline">Install</span>
+            </button>
+          )}
 
           {/* Sync Button */}
           <button

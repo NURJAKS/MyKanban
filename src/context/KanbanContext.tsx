@@ -206,7 +206,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   notesRef.current = notes;
   syncConfigRef.current = syncConfig;
 
-  // Sync theme with document class
+  // Sync theme with document class & mobile PWA status bar color
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') {
@@ -215,6 +215,10 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } else {
       root.classList.add('light');
       root.classList.remove('dark');
+    }
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', theme === 'dark' ? '#131314' : '#ffffff');
     }
     try {
       localStorage.setItem(STORAGE_KEY_THEME, theme);
@@ -412,7 +416,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setSyncError(null);
   }, []);
 
-  // Auto-pull on initial mount, when tab becomes visible/focused, and every 10s while visible
+  // Auto-pull on initial mount, when tab/PWA becomes visible/focused, on reconnect, and every 10s while visible
   useEffect(() => {
     if (syncConfigRef.current?.token && syncConfigRef.current?.gistId) {
       syncPull();
@@ -424,6 +428,15 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (elapsed > 3000 && syncConfigRef.current?.token && syncConfigRef.current?.gistId) {
           syncPull();
         }
+      }
+    };
+
+    const handleOnline = () => {
+      if (!syncConfigRef.current?.token || !syncConfigRef.current?.gistId) return;
+      if (hasPendingPushRef.current) {
+        syncPush();
+      } else {
+        syncPull();
       }
     };
 
@@ -439,12 +452,16 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     document.addEventListener('visibilitychange', handleVisibilityOrFocus);
     window.addEventListener('focus', handleVisibilityOrFocus);
+    window.addEventListener('pageshow', handleVisibilityOrFocus);
+    window.addEventListener('online', handleOnline);
     return () => {
       window.clearInterval(pollInterval);
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       window.removeEventListener('focus', handleVisibilityOrFocus);
+      window.removeEventListener('pageshow', handleVisibilityOrFocus);
+      window.removeEventListener('online', handleOnline);
     };
-  }, [syncPull]);
+  }, [syncPull, syncPush]);
 
   // Save subjects, tasks & notes to localStorage + debounced auto-push to Gist
   useEffect(() => {
