@@ -72,11 +72,20 @@ export async function fetchGistData(
 
   const data = await res.json();
   const file = data.files?.[SYNC_FILENAME];
-  if (!file || !file.content) {
+  if (!file || (!file.content && !file.raw_url)) {
     throw new Error(`File "${SYNC_FILENAME}" not found in this Gist.`);
   }
 
-  const parsed = JSON.parse(file.content) as SyncPayload;
+  let rawContent: string = file.content || '';
+  if (file.truncated && file.raw_url) {
+    const rawRes = await fetch(file.raw_url, { cache: 'no-store' });
+    if (!rawRes.ok) {
+      throw new Error(`Failed to fetch full Gist content (${rawRes.status})`);
+    }
+    rawContent = await rawRes.text();
+  }
+
+  const parsed = JSON.parse(rawContent) as SyncPayload;
   if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.subjects)) {
     throw new Error('Invalid MyKanban sync data format.');
   }

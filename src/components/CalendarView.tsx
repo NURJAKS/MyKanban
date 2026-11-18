@@ -312,7 +312,11 @@ export const CalendarView: React.FC = memo(() => {
       )}
 
       {/* Mobile Weekday Quick-Jump Filter (< md) */}
-      <div className="flex md:hidden items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+      <div
+        className="flex md:hidden items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar"
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
+      >
         <button
           onClick={() => setMobileSelectedDay('all')}
           className={`px-2.5 py-1 rounded-full text-xs font-medium shrink-0 border transition-colors ${

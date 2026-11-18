@@ -88,10 +88,10 @@ export const GoogleHeader: React.FC = () => {
         </div>
 
         {/* View Mode Switcher */}
-        <div className="flex items-center gap-1 bg-[#f0f4f9] dark:bg-[#1e1f20] p-1 rounded-xl border border-[#e0e2ec] dark:border-[#282a2c] self-start md:self-auto">
+        <div className="flex items-center gap-1 bg-[#f0f4f9] dark:bg-[#1e1f20] p-1 rounded-xl border border-[#e0e2ec] dark:border-[#282a2c] self-start md:self-auto max-w-full overflow-x-auto custom-scrollbar">
           <button
             onClick={() => setViewMode('status_board')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 whitespace-nowrap ${
               viewMode === 'status_board'
                 ? 'bg-white dark:bg-[#282a2c] text-[#0b57d0] dark:text-[#8ab4f8] shadow-sm'
                 : 'text-[#5f6368] dark:text-[#8e918f] hover:text-[#1f1f1f] dark:hover:text-[#e3e3e3]'
@@ -103,7 +103,7 @@ export const GoogleHeader: React.FC = () => {
 
           <button
             onClick={() => setViewMode('subject_lists')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 whitespace-nowrap ${
               viewMode === 'subject_lists'
                 ? 'bg-white dark:bg-[#282a2c] text-[#0b57d0] dark:text-[#8ab4f8] shadow-sm'
                 : 'text-[#5f6368] dark:text-[#8e918f] hover:text-[#1f1f1f] dark:hover:text-[#e3e3e3]'
@@ -115,7 +115,7 @@ export const GoogleHeader: React.FC = () => {
 
           <button
             onClick={() => setViewMode('calendar')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 whitespace-nowrap ${
               viewMode === 'calendar'
                 ? 'bg-white dark:bg-[#282a2c] text-[#0b57d0] dark:text-[#8ab4f8] shadow-sm'
                 : 'text-[#5f6368] dark:text-[#8e918f] hover:text-[#1f1f1f] dark:hover:text-[#e3e3e3]'
@@ -127,7 +127,7 @@ export const GoogleHeader: React.FC = () => {
 
           <button
             onClick={() => setViewMode('notes')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 whitespace-nowrap ${
               viewMode === 'notes'
                 ? 'bg-white dark:bg-[#282a2c] text-[#0b57d0] dark:text-[#8ab4f8] shadow-sm'
                 : 'text-[#5f6368] dark:text-[#8e918f] hover:text-[#1f1f1f] dark:hover:text-[#e3e3e3]'
